@@ -30,7 +30,7 @@ You only need to do **one** of the options below. Pick what you use.
 3. Connect your **GitHub** account if asked, then select your **BILYAR repository**.
 4. Use these settings (Render may fill some from the repo):
    - **Name:** `bilyar`
-   - **Build Command:** `npm install && npm run build`
+   - **Build Command:** `npm install --include=dev && npm run build`
    - **Start Command:** `npm start`
 5. Click **Advanced** and add **Environment Variables**. Add these one by one:
 

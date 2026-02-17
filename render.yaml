@@ -4,7 +4,8 @@ services:
   - type: web
     name: bilyar
     runtime: node
-    buildCommand: npm install && npm run build
+    # Install devDependencies so build has tsx, vite, esbuild
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
