@@ -474,8 +474,8 @@ export async function registerRoutes(
         });
       }
 
-      // Deema docs: amount in smallest unit (fils). 1 KWD = 1000 fils.
-      const amountInSmallestUnit = Math.round(order.total * 1000);
+      // Deema API expects amount in KWD (decimal), not fils. Sandbox range 100-200 KWD.
+      const amountKwd = Number(order.total);
 
       // Deema docs: "Authorization: Basic {API Key}". Options: basic (raw), basic64 (base64), bearer.
       const authMode = (process.env.DEEMA_AUTH || "basic").toLowerCase();
@@ -495,7 +495,7 @@ export async function registerRoutes(
           "Authorization": authHeader,
         },
         body: JSON.stringify({
-          amount: amountInSmallestUnit,
+          amount: amountKwd,
           currency_code: "KWD",
           merchant_order_id: String(orderId),
           merchant_urls: {
