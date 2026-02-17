@@ -279,7 +279,10 @@ export async function registerRoutes(
     }>();
 
     for (const order of orders) {
-      const key = order.customerEmail.toLowerCase();
+      const email = (order.customerEmail || "").trim().toLowerCase();
+      const phone = (order.customerPhone || "").trim();
+      const name = (order.customerName || "").trim();
+      const key = email ? email : `${phone}|${name}`;
       const existing = customerMap.get(key);
       if (existing) {
         existing.totalOrders += 1;

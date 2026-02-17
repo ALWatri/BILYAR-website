@@ -91,40 +91,12 @@ export default function Orders() {
   const itemNotesForDriver = (item: OrderWithItems["items"][0]) =>
     (item as { notesEn?: string | null }).notesEn ?? item.notes;
 
-  return (
-    <AdminLayout>
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-serif font-bold text-gray-900" data-testid="text-orders-title">{t.orders}</h1>
-          <p className="text-gray-500">{t.manage_orders}</p>
-        </div>
-        <Button variant="outline" className="gap-2">
-          <Printer className="h-4 w-4" /> {t.export_report}
-        </Button>
-      </div>
+  const successfulStatuses = ["Paid", "Processing", "Shipped", "Delivered"];
+  const pendingAbandonedStatuses = ["Pending", "Unfinished", "Cancelled"];
+  const successfulOrders = orders.filter((o) => successfulStatuses.includes(o.status));
+  const pendingAbandonedOrders = orders.filter((o) => pendingAbandonedStatuses.includes(o.status));
 
-      <div className="bg-white border border-gray-200 rounded-sm shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className={cn(isRtl && "text-right")}>{t.order_id}</TableHead>
-              <TableHead className={cn(isRtl && "text-right")}>{t.date}</TableHead>
-              <TableHead className={cn(isRtl && "text-right")}>{t.customer}</TableHead>
-              <TableHead className={cn(isRtl && "text-right")}>{t.payment_method}</TableHead>
-              <TableHead className={cn(isRtl && "text-right")}>{t.status}</TableHead>
-              <TableHead className={cn("text-right", isRtl && "text-left")}>{t.total}</TableHead>
-              <TableHead className={cn("text-right", isRtl && "text-left")}>{t.actions}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {orders.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                  {isRtl ? "لا توجد طلبات بعد" : "No orders yet"}
-                </TableCell>
-              </TableRow>
-            )}
-            {orders.map((order) => (
+  const renderOrderRow = (order: OrderWithItems) => (
               <TableRow key={order.id} data-testid={`row-order-${order.id}`}>
                 <TableCell className="font-medium">{order.orderNumber}</TableCell>
                 <TableCell>{order.createdAt}</TableCell>
@@ -259,10 +231,77 @@ export default function Orders() {
                   </Dialog>
                 </TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+  );
+
+  const tableHeader = (
+    <TableRow>
+      <TableHead className={cn(isRtl && "text-right")}>{t.order_id}</TableHead>
+      <TableHead className={cn(isRtl && "text-right")}>{t.date}</TableHead>
+      <TableHead className={cn(isRtl && "text-right")}>{t.customer}</TableHead>
+      <TableHead className={cn(isRtl && "text-right")}>{t.payment_method}</TableHead>
+      <TableHead className={cn(isRtl && "text-right")}>{t.status}</TableHead>
+      <TableHead className={cn("text-right", isRtl && "text-left")}>{t.total}</TableHead>
+      <TableHead className={cn("text-right", isRtl && "text-left")}>{t.actions}</TableHead>
+    </TableRow>
+  );
+
+  return (
+    <AdminLayout>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-serif font-bold text-gray-900" data-testid="text-orders-title">{t.orders}</h1>
+          <p className="text-gray-500">{t.manage_orders}</p>
+        </div>
+        <Button variant="outline" className="gap-2">
+          <Printer className="h-4 w-4" /> {t.export_report}
+        </Button>
       </div>
+
+      <section className="mb-12">
+        <h2 className="text-xl font-serif font-semibold text-gray-900 mb-4">{t.successful_orders}</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          {isRtl ? "طلبات مدفوعة أو قيد التجهيز أو الشحن أو التسليم." : "Paid orders and those in progress, shipped, or delivered."}
+        </p>
+        <div className="bg-white border border-gray-200 rounded-sm shadow-sm">
+          <Table>
+            <TableHeader>{tableHeader}</TableHeader>
+            <TableBody>
+              {successfulOrders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                    {isRtl ? "لا توجد طلبات ناجحة" : "No successful orders yet"}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                successfulOrders.map((order) => renderOrderRow(order))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-xl font-serif font-semibold text-gray-900 mb-4">{t.pending_abandoned_orders}</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          {isRtl ? "طلبات معلقة أو غير مكتملة أو ملغاة. يمكنك متابعة العملاء بعروض." : "Pending, abandoned, or cancelled. You can follow up with offers."}
+        </p>
+        <div className="bg-white border border-gray-200 rounded-sm shadow-sm">
+          <Table>
+            <TableHeader>{tableHeader}</TableHeader>
+            <TableBody>
+              {pendingAbandonedOrders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                    {isRtl ? "لا توجد طلبات معلقة أو غير مكتملة" : "No pending or abandoned orders"}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                pendingAbandonedOrders.map((order) => renderOrderRow(order))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </section>
     </AdminLayout>
   );
 }
