@@ -3,6 +3,7 @@ import type { Product } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { translations } from "@/lib/translations";
 import { useEffect, useState } from "react";
 
 interface ProductCardProps {
@@ -50,6 +51,14 @@ export function ProductCard({ product }: ProductCardProps) {
             isRtl ? "right-4" : "left-4"
           )}>
             {isRtl ? "جديد" : "New"}
+          </span>
+        )}
+        {(product as Product & { outOfStock?: boolean }).outOfStock && (
+          <span className={cn(
+            "absolute top-4 bg-muted-foreground/90 text-white text-xs uppercase tracking-widest px-3 py-1",
+            product.isNew ? (isRtl ? "right-4 mt-8" : "left-4 mt-8") : (isRtl ? "right-4" : "left-4")
+          )}>
+            {translations[lang].product.out_of_stock}
           </span>
         )}
         <Button

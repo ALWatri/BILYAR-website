@@ -67,6 +67,10 @@ export default function ProductDetails() {
   const isRtl = lang === "ar";
   const name = isRtl ? product.nameAr : product.name;
   const description = isRtl ? product.descriptionAr : product.description;
+  const sku = (product as Product & { sku?: string | null }).sku;
+  const showSizes = sku != null && String(sku).trim() !== "" && String(sku) !== "0";
+  const outOfStock = (product as Product & { outOfStock?: boolean }).outOfStock ?? false;
+  const SIZES = ["XS", "S", "M", "L", "XL", "2XL"];
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -96,15 +100,17 @@ export default function ProductDetails() {
                 {description}
               </p>
 
+              {showSizes && (
               <div>
                 <div className="flex justify-between mb-4">
                   <span className="text-sm font-medium uppercase tracking-wide">{t.size}</span>
                   <button className="text-sm text-muted-foreground underline">{t.guide}</button>
                 </div>
-                <div className="grid grid-cols-5 gap-2">
-                  {["XS", "S", "M", "L", "XL"].map((size) => (
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {SIZES.map((size) => (
                     <button
                       key={size}
+                      type="button"
                       onClick={() => setSelectedSize(size)}
                       data-testid={`button-size-${size}`}
                       className={`h-12 border transition-all ${
@@ -118,6 +124,7 @@ export default function ProductDetails() {
                   ))}
                 </div>
               </div>
+            )}
 
               <div className="space-y-6 pt-6 border-t border-border">
                 <h3 className={cn("text-sm font-bold uppercase tracking-widest", isRtl ? "text-right" : "text-left")}>
@@ -199,15 +206,21 @@ export default function ProductDetails() {
                 </div>
               </div>
 
+              {outOfStock ? (
+              <div className="w-full h-14 flex items-center justify-center border border-border bg-muted/30 text-muted-foreground uppercase tracking-widest text-sm">
+                {t.out_of_stock}
+              </div>
+            ) : (
               <Button 
                 size="lg" 
                 className={cn(
                   "w-full h-14 text-lg uppercase tracking-widest rounded-none transition-all",
                   addedToCart && "bg-green-700 hover:bg-green-700"
                 )}
-                disabled={!selectedSize}
+                disabled={showSizes && !selectedSize}
                 onClick={() => {
-                  if (!product || !selectedSize) return;
+                  if (!product) return;
+                  if (showSizes && !selectedSize) return;
                   const measurements: Record<string, string> = {};
                   Object.entries(measurementRefs.current).forEach(([key, el]) => {
                     if (el && el.value) measurements[key] = el.value;
@@ -215,7 +228,7 @@ export default function ProductDetails() {
                   addItem({
                     product,
                     quantity: 1,
-                    size: selectedSize,
+                    size: showSizes ? (selectedSize ?? "") : t.one_size,
                     measurements: Object.keys(measurements).length > 0 ? measurements : undefined,
                     notes: notesRef.current?.value || undefined,
                   });
@@ -230,6 +243,7 @@ export default function ProductDetails() {
                   t.add_to_cart
                 )}
               </Button>
+            )}
 
               <div className="grid grid-cols-2 gap-4 text-center py-6 border-y border-border">
                 <div className="flex flex-col items-center gap-2">

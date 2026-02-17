@@ -16,6 +16,8 @@ export const products = pgTable("products", {
   descriptionAr: text("description_ar").notNull(),
   hasShirt: boolean("has_shirt").default(false),
   hasTrouser: boolean("has_trouser").default(false),
+  sku: text("sku"),
+  outOfStock: boolean("out_of_stock").default(false),
 });
 
 export const orders = pgTable("orders", {

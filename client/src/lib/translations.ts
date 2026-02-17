@@ -67,7 +67,9 @@ export const translations = {
       knee_width: "Knee Width (inch)",
       leg_opening: "Leg Opening (inch)",
       notes: "Notes",
-      notes_placeholder: "Add any special instructions or notes here..."
+      notes_placeholder: "Add any special instructions or notes here...",
+      out_of_stock: "Out of stock",
+      one_size: "One Size"
     },
     cart: {
       title: "Shopping Bag",
@@ -183,6 +185,9 @@ export const translations = {
       upload_images: "Upload images",
       has_shirt_measurements: "Shirt measurements",
       has_trouser_measurements: "Trouser measurements",
+      sku: "SKU",
+      sku_help: "Leave empty or 0 to hide size selector on product page",
+      out_of_stock: "Out of stock",
       save_product: "Save Product",
       cancel: "Cancel",
       delete_product_confirm: "Are you sure you want to delete this product?",
@@ -292,7 +297,9 @@ export const translations = {
       knee_width: "عرض الركبة (إنش)",
       leg_opening: "عرض الساق (إنش)",
       notes: "ملاحظات",
-      notes_placeholder: "أضف أي تعليمات خاصة أو ملاحظات هنا..."
+      notes_placeholder: "أضف أي تعليمات خاصة أو ملاحظات هنا...",
+      out_of_stock: "نفذ من المخزون",
+      one_size: "مقاس واحد"
     },
     cart: {
       title: "حقيبة التسوق",
@@ -408,6 +415,9 @@ export const translations = {
       upload_images: "رفع الصور",
       has_shirt_measurements: "مقاسات القميص",
       has_trouser_measurements: "مقاسات البنطلون",
+      sku: "رمز المنتج",
+      sku_help: "اتركه فارغاً أو 0 لإخفاء اختيار المقاس",
+      out_of_stock: "نفذ من المخزون",
       save_product: "حفظ المنتج",
       cancel: "إلغاء",
       delete_product_confirm: "هل أنت متأكد من حذف هذا المنتج؟",

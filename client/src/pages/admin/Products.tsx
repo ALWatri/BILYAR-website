@@ -47,6 +47,8 @@ const emptyForm = () => ({
   isNew: false,
   hasShirt: false,
   hasTrouser: false,
+  sku: "",
+  outOfStock: false,
 });
 
 function productToForm(p: Product) {
@@ -62,6 +64,8 @@ function productToForm(p: Product) {
     isNew: p.isNew ?? false,
     hasShirt: p.hasShirt ?? false,
     hasTrouser: p.hasTrouser ?? false,
+    sku: (p as Product & { sku?: string | null }).sku ?? "",
+    outOfStock: (p as Product & { outOfStock?: boolean }).outOfStock ?? false,
   };
 }
 
@@ -137,6 +141,8 @@ export default function Products() {
           isNew: payload.isNew,
           hasShirt: payload.hasShirt,
           hasTrouser: payload.hasTrouser,
+          sku: payload.sku?.trim() || null,
+          outOfStock: payload.outOfStock,
         }),
       });
       if (!res.ok) {
@@ -174,6 +180,8 @@ export default function Products() {
           isNew: payload.isNew,
           hasShirt: payload.hasShirt,
           hasTrouser: payload.hasTrouser,
+          sku: payload.sku?.trim() || null,
+          outOfStock: payload.outOfStock,
         }),
       });
       if (!res.ok) {
@@ -350,6 +358,11 @@ export default function Products() {
               <Input value={form.categoryAr} onChange={(e) => setForm((f) => ({ ...f, categoryAr: e.target.value }))} className="rounded-none" />
             </div>
             <div className="space-y-2">
+              <Label>{t.sku}</Label>
+              <Input value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} className="rounded-none" placeholder="e.g. DR-001" />
+              <p className="text-xs text-muted-foreground">{t.sku_help}</p>
+            </div>
+            <div className="space-y-2">
               <Label>{t.images_placeholder}</Label>
               <input
                 ref={fileInputRef}
@@ -406,6 +419,10 @@ export default function Products() {
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox checked={form.hasTrouser} onCheckedChange={(v) => setForm((f) => ({ ...f, hasTrouser: !!v }))} />
                 <span>{t.has_trouser_measurements}</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox checked={form.outOfStock} onCheckedChange={(v) => setForm((f) => ({ ...f, outOfStock: !!v }))} />
+                <span>{t.out_of_stock}</span>
               </label>
             </div>
             <div className="flex justify-end gap-2 pt-4">

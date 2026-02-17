@@ -114,6 +114,8 @@ export async function registerRoutes(
     isNew: z.boolean().optional().default(false),
     hasShirt: z.boolean().optional().default(false),
     hasTrouser: z.boolean().optional().default(false),
+    sku: z.string().optional().nullable(),
+    outOfStock: z.boolean().optional().default(false),
   });
 
   app.post("/api/products", async (req, res) => {

@@ -38,6 +38,8 @@ function toProduct(doc: DocumentSnapshot): Product {
     descriptionAr: d.descriptionAr,
     hasShirt: d.hasShirt ?? false,
     hasTrouser: d.hasTrouser ?? false,
+    sku: d.sku ?? null,
+    outOfStock: d.outOfStock ?? false,
   };
 }
 
@@ -171,6 +173,8 @@ export class FirestoreStorage implements IStorage {
       descriptionAr: product.descriptionAr,
       hasShirt: product.hasShirt ?? false,
       hasTrouser: product.hasTrouser ?? false,
+      sku: product.sku ?? null,
+      outOfStock: product.outOfStock ?? false,
     };
     await docRef.set(data);
     return data as Product;
