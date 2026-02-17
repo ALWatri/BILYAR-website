@@ -1,0 +1,12 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "order_items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "orderId", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

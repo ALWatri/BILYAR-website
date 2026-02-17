@@ -1,0 +1,23 @@
+# Render Blueprint - connect your GitHub repo and Render will use this.
+# See: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: bilyar
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: DEEMA_API_KEY
+        sync: false
+      - key: DEEMA_WEBHOOK_SECRET
+        sync: false
+      - key: MYFATOORAH_API_KEY
+        sync: false
