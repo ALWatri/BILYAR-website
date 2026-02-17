@@ -467,6 +467,13 @@ export async function registerRoutes(
 
       const baseUrl = getBaseUrl(req);
 
+      const isSandbox = DEEMA_BASE_URL.includes("sandbox-api") || DEEMA_BASE_URL.includes("staging-api");
+      if (isSandbox && (order.total < 100 || order.total > 200)) {
+        return res.status(400).json({
+          message: "Deema Sandbox only accepts orders between 100 and 200 KWD. Your total is " + order.total.toFixed(3) + " KWD. Add or remove items to test.",
+        });
+      }
+
       // Deema docs: amount in smallest unit (fils). 1 KWD = 1000 fils.
       const amountInSmallestUnit = Math.round(order.total * 1000);
 

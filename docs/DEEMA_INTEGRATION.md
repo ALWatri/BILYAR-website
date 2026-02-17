@@ -40,6 +40,12 @@ DEEMA_WEBHOOK_SECRET=your_secret_from_portal
 # DEEMA_WEBHOOK_SECRET=your_live_webhook_secret
 ```
 
+### Sandbox amount limits
+
+**In Sandbox, the order total must be between 100 and 200 KWD.** Deema rejects amounts outside this range with “purchase amount is not within the merchant's credit limit range”. Use a cart total of 100–200 KWD when testing (e.g. add products so the total is at least 100 KWD and at most 200 KWD).
+
+In **Production**, the minimum is 10 KWD (no upper limit from Deema).
+
 ---
 
 ## 3. Webhook Configuration
