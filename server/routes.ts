@@ -470,8 +470,11 @@ export async function registerRoutes(
       // Deema docs: amount in smallest unit (fils). 1 KWD = 1000 fils.
       const amountInSmallestUnit = Math.round(order.total * 1000);
 
-      // Official docs: "Authorization: Basic {API Key}". Use Base64(apiKey + ":").
-      const authHeader = `Basic ${Buffer.from(`${DEEMA_API_KEY}:`).toString("base64")}`;
+      // Auth: Bearer is used by the merchant API. Set DEEMA_AUTH=Basic to use Basic auth instead.
+      const useBasic = process.env.DEEMA_AUTH === "Basic";
+      const authHeader = useBasic
+        ? `Basic ${Buffer.from(`${DEEMA_API_KEY}:`).toString("base64")}`
+        : `Bearer ${DEEMA_API_KEY}`;
 
       const response = await fetch(`${DEEMA_BASE_URL}/api/merchant/v1/purchase`, {
         method: "POST",
