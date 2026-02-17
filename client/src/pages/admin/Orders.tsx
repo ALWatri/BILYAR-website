@@ -65,12 +65,20 @@ export default function Orders() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Pending": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "Paid": return "bg-emerald-100 text-emerald-800 border-emerald-200";
       case "Processing": return "bg-blue-100 text-blue-800 border-blue-200";
       case "Shipped": return "bg-purple-100 text-purple-800 border-purple-200";
       case "Delivered": return "bg-green-100 text-green-800 border-green-200";
+      case "Unfinished": return "bg-gray-100 text-gray-700 border-gray-200";
       case "Cancelled": return "bg-red-100 text-red-800 border-red-200";
       default: return "bg-gray-100 text-gray-800 border-gray-200";
     }
+  };
+
+  const paymentMethodLabel = (method: string | null | undefined) => {
+    if (method === "deema") return "Deema (BNPL)";
+    if (method === "myfatoorah") return "MyFatoorah";
+    return method || "—";
   };
 
   /** Show English translation for drivers when available, else original */
@@ -102,6 +110,7 @@ export default function Orders() {
               <TableHead className={cn(isRtl && "text-right")}>{t.order_id}</TableHead>
               <TableHead className={cn(isRtl && "text-right")}>{t.date}</TableHead>
               <TableHead className={cn(isRtl && "text-right")}>{t.customer}</TableHead>
+              <TableHead className={cn(isRtl && "text-right")}>{t.payment_method}</TableHead>
               <TableHead className={cn(isRtl && "text-right")}>{t.status}</TableHead>
               <TableHead className={cn("text-right", isRtl && "text-left")}>{t.total}</TableHead>
               <TableHead className={cn("text-right", isRtl && "text-left")}>{t.actions}</TableHead>
@@ -110,7 +119,7 @@ export default function Orders() {
           <TableBody>
             {orders.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                   {isRtl ? "لا توجد طلبات بعد" : "No orders yet"}
                 </TableCell>
               </TableRow>
@@ -124,6 +133,9 @@ export default function Orders() {
                     <span className="font-medium text-sm">{forDriver(order).name}</span>
                     <span className="text-xs text-muted-foreground">{order.customerEmail}</span>
                   </div>
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {paymentMethodLabel((order as OrderWithItems & { paymentMethod?: string }).paymentMethod)}
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline" className={cn("rounded-sm font-normal", getStatusColor(order.status))}>
@@ -146,6 +158,12 @@ export default function Orders() {
                       <div className="grid grid-cols-2 gap-8 py-4 border-b border-gray-100">
                         <div>
                           <h3 className="font-bold text-sm text-gray-500 uppercase tracking-wider mb-2">{t.customer_info}</h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            <span className="text-gray-500">{t.payment_method}:</span> {paymentMethodLabel((order as OrderWithItems & { paymentMethod?: string }).paymentMethod)}
+                            {(order as OrderWithItems & { paymentStatus?: string }).paymentStatus && (
+                              <span className="ml-2"> • {(order as OrderWithItems & { paymentStatus?: string }).paymentStatus}</span>
+                            )}
+                          </p>
                           <p className="font-medium">{forDriver(order).name}</p>
                           <p className="text-sm text-gray-600">{order.customerEmail}</p>
                           <p className="text-sm text-gray-600">{order.customerPhone}</p>
@@ -227,9 +245,11 @@ export default function Orders() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Pending">Pending</SelectItem>
+                            <SelectItem value="Paid">Paid</SelectItem>
                             <SelectItem value="Processing">Processing</SelectItem>
                             <SelectItem value="Shipped">Shipped</SelectItem>
                             <SelectItem value="Delivered">Delivered</SelectItem>
+                            <SelectItem value="Unfinished">Unfinished</SelectItem>
                             <SelectItem value="Cancelled">Cancelled</SelectItem>
                           </SelectContent>
                         </Select>

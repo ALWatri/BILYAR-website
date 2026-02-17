@@ -257,7 +257,7 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
     const { status } = req.body;
-    if (!["Pending", "Processing", "Shipped", "Delivered", "Cancelled"].includes(status)) {
+    if (!["Pending", "Paid", "Processing", "Shipped", "Delivered", "Unfinished", "Cancelled"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
     const updated = await storage.updateOrderStatus(id, status);
@@ -437,13 +437,13 @@ export async function registerRoutes(
 
         if (statusResult.IsSuccess && statusResult.Data?.InvoiceStatus === "Paid") {
           await storage.updateOrderPayment(id, paymentId as string, "paid");
-          await storage.updateOrderStatus(id, "Processing");
+          await storage.updateOrderStatus(id, "Paid");
           return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
         }
       }
 
       await storage.updateOrderPayment(id, paymentId as string || "", "paid");
-      await storage.updateOrderStatus(id, "Processing");
+      await storage.updateOrderStatus(id, "Paid");
       return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
     } catch (err) {
       console.error("MyFatoorah callback error:", err);
@@ -531,7 +531,7 @@ export async function registerRoutes(
 
     if (status === "success") {
       await storage.updateOrderPayment(id, "", "paid");
-      await storage.updateOrderStatus(id, "Processing");
+      await storage.updateOrderStatus(id, "Paid");
       return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
     } else {
       await storage.updateOrderPayment(id, "", "failed");
@@ -561,7 +561,7 @@ export async function registerRoutes(
       if (order) {
         if (status === "Captured") {
           await storage.updateOrderPayment(order.id, order_reference || "", "paid");
-          await storage.updateOrderStatus(order.id, "Processing");
+          await storage.updateOrderStatus(order.id, "Paid");
           console.log(`Deema webhook: Order ${order.id} payment captured`);
         } else if (status === "Expired" || status === "Cancelled") {
           await storage.updateOrderPayment(order.id, order_reference || "", "failed");
