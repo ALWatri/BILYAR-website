@@ -1,13 +1,38 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
+import path from "path";
+import fs from "fs";
+import multer from "multer";
 import type { IStorage } from "./storage";
+import { getFirebaseStorageBucket } from "./firebase-init";
 import { translateToEnglish } from "./translate";
 import { z } from "zod";
 
+const UPLOADS_DIR = path.join(process.env.UPLOADS_DIR || process.cwd(), "uploads");
+
+function ensureUploadsDir() {
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  }
+}
+
+// Memory storage so we can send buffers to Firebase Storage or write to disk
+const memoryUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
+
+function safeExt(originalname: string): string {
+  const ext = path.extname(originalname) || ".jpg";
+  return ext.toLowerCase().match(/\.(jpe?g|png|gif|webp)$/) ? ext : ".jpg";
+}
+
+function uniqueFilename(ext: string): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}${ext}`;
+}
+
 const MYFATOORAH_BASE_URL = process.env.MYFATOORAH_BASE_URL || "https://demo.myfatoorah.com";
 const MYFATOORAH_API_KEY = process.env.MYFATOORAH_API_KEY || "";
-// Sandbox: https://staging-api.deema.me (default). Live: https://api.deema.me
-const DEEMA_BASE_URL = process.env.DEEMA_BASE_URL || "https://staging-api.deema.me";
+// Sandbox: https://sandbox-api.deema.me or https://staging-api.deema.me. Live: https://api.deema.me
+const DEEMA_BASE_URL = process.env.DEEMA_BASE_URL || "https://sandbox-api.deema.me";
 const DEEMA_API_KEY = process.env.DEEMA_API_KEY || "";
 const DEEMA_WEBHOOK_HEADER = process.env.DEEMA_WEBHOOK_HEADER || "x-webhook-secret";
 const DEEMA_WEBHOOK_SECRET = process.env.DEEMA_WEBHOOK_SECRET ?? "bilyar-deema-webhook-2026";
@@ -23,6 +48,45 @@ export async function registerRoutes(
   app: Express,
   storage: IStorage
 ): Promise<Server> {
+
+  ensureUploadsDir();
+  app.use("/uploads", express.static(UPLOADS_DIR));
+
+  app.post("/api/upload", memoryUpload.array("images", 20), async (req, res) => {
+    const files = req.files as Express.Multer.File[] | undefined;
+    if (!files?.length) {
+      return res.status(400).json({ message: "No images uploaded" });
+    }
+    const bucket = getFirebaseStorageBucket();
+    if (bucket) {
+      try {
+        const urls: string[] = [];
+        for (const f of files) {
+          const ext = safeExt(f.originalname);
+          const name = `products/${uniqueFilename(ext)}`;
+          const file = bucket.file(name);
+          await file.save(f.buffer, {
+            metadata: { contentType: f.mimetype || "image/jpeg" },
+          });
+          await file.makePublic();
+          urls.push(`https://storage.googleapis.com/${bucket.name}/${name}`);
+        }
+        return res.json({ urls });
+      } catch (err) {
+        console.error("Firebase Storage upload failed (bucket missing or no billing?); using disk.", err);
+      }
+    }
+    // Fallback: write to disk (always works; used when no bucket or Storage upload failed)
+    const urls: string[] = [];
+    for (const f of files) {
+      const ext = safeExt(f.originalname);
+      const filename = uniqueFilename(ext);
+      const filepath = path.join(UPLOADS_DIR, filename);
+      fs.writeFileSync(filepath, f.buffer);
+      urls.push(`/uploads/${filename}`);
+    }
+    res.json({ urls });
+  });
 
   app.get("/api/products", async (req, res) => {
     const q = typeof req.query.q === "string" ? req.query.q : undefined;
@@ -403,18 +467,22 @@ export async function registerRoutes(
 
       const baseUrl = getBaseUrl(req);
 
+      // Deema docs: amount in smallest unit (fils). 1 KWD = 1000 fils.
       const amountInSmallestUnit = Math.round(order.total * 1000);
+
+      // Official docs: "Authorization: Basic {API Key}". Use Base64(apiKey + ":").
+      const authHeader = `Basic ${Buffer.from(`${DEEMA_API_KEY}:`).toString("base64")}`;
 
       const response = await fetch(`${DEEMA_BASE_URL}/api/merchant/v1/purchase`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${DEEMA_API_KEY}`,
+          "Authorization": authHeader,
         },
         body: JSON.stringify({
           amount: amountInSmallestUnit,
           currency_code: "KWD",
-          merchant_order_id: orderId,
+          merchant_order_id: String(orderId),
           merchant_urls: {
             success: `${baseUrl}/api/payment/deema/callback?orderId=${orderId}&status=success`,
             failure: `${baseUrl}/api/payment/deema/callback?orderId=${orderId}&status=failed`,
@@ -423,7 +491,7 @@ export async function registerRoutes(
       });
 
       const result = await response.json();
-      console.log("Deema API response:", JSON.stringify(result));
+      console.log("Deema API response:", response.status, JSON.stringify(result));
 
       if (result.data && result.data.redirect_link) {
         await storage.updateOrderPayment(orderId, result.data.order_reference || "", "initiated");
@@ -431,9 +499,10 @@ export async function registerRoutes(
           paymentUrl: result.data.redirect_link,
           deemaOrderId: result.data.order_reference,
         });
-      } else {
-        return res.status(400).json({ message: result.message || "Deema payment initiation failed" });
       }
+
+      const errMsg = result.message || result.error || (typeof result.errors === "string" ? result.errors : result.errors?.[0]?.message) || "Deema payment initiation failed";
+      return res.status(400).json({ message: errMsg });
     } catch (error: any) {
       console.error("Deema error:", error);
       return res.status(500).json({ message: "Payment service error" });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AdminLayout } from "./AdminLayout";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { translations } from "@/lib/translations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Product } from "@/lib/data";
-import { Package, Pencil, Trash2 } from "lucide-react";
+import { Package, Pencil, Trash2, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const CATEGORIES_EN = ["Outerwear", "Sets", "Dresses", "Tops", "Accessories"];
@@ -71,8 +71,38 @@ export default function Products() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const imageList = form.images ? form.images.split("\n").map((s) => s.trim()).filter(Boolean) : [];
+  const setImageList = (urls: string[]) => setForm((f) => ({ ...f, images: urls.join("\n") }));
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) formData.append("images", files[i]);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Upload failed");
+      }
+      const { urls } = await res.json();
+      setForm((f) => {
+        const current = f.images ? f.images.split("\n").map((s) => s.trim()).filter(Boolean) : [];
+        return { ...f, images: [...current, ...urls].join("\n") };
+      });
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "Upload failed", variant: "destructive" });
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
 
   useEffect(() => {
     const checkLang = () => {
@@ -321,7 +351,48 @@ export default function Products() {
             </div>
             <div className="space-y-2">
               <Label>{t.images_placeholder}</Label>
-              <Textarea value={form.images} onChange={(e) => setForm((f) => ({ ...f, images: e.target.value }))} className="rounded-none min-h-[60px] font-mono text-sm" placeholder="/images/prod-1.jpg" required />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              <div
+                className="border border-dashed border-input rounded-none p-6 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploading ? (
+                  <span className="text-muted-foreground text-sm">Uploading…</span>
+                ) : (
+                  <>
+                    <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">{t.upload_images}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Click or drag images here</p>
+                  </>
+                )}
+              </div>
+              {imageList.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {imageList.map((url, idx) => (
+                    <div key={`${url}-${idx}`} className="relative group">
+                      <img src={url} alt="" className="h-20 w-20 object-cover rounded-none border border-input" />
+                      <button
+                        type="button"
+                        className="absolute top-0 right-0 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => setImageList(imageList.filter((_, i) => i !== idx))}
+                        aria-label="Remove image"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {imageList.length === 0 && (
+                <p className="text-xs text-muted-foreground">At least one image required</p>
+              )}
             </div>
             <div className="flex flex-wrap gap-6">
               <label className="flex items-center gap-2 cursor-pointer">

@@ -57,3 +57,9 @@ export function initFirebase(): ReturnType<typeof admin.app> {
     "Firebase credential required. Set FIREBASE_SERVICE_ACCOUNT_JSON (JSON string) or GOOGLE_APPLICATION_CREDENTIALS (path to key file)."
   );
 }
+
+/** Returns the default Storage bucket when Firebase is already initialized (e.g. when using Firestore); null otherwise. */
+export function getFirebaseStorageBucket(): import("firebase-admin").storage.Bucket | null {
+  if (getApps().length === 0) return null;
+  return admin.storage().bucket();
+}

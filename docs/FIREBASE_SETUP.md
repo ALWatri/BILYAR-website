@@ -101,3 +101,42 @@ firebase deploy --only firestore:indexes
 | 6 | Start app with `npm run dev` or `npm start` |
 
 No PostgreSQL or `DATABASE_URL` is required when using Firestore.
+
+---
+
+## Firebase Storage (product image uploads)
+
+When the app uses Firestore, **admin product image uploads** can be stored in **Firebase Storage** so images persist on Render. If the bucket doesn’t exist or upload fails (e.g. no billing), uploads fall back to the local `uploads/` folder (fine locally; on Render they are lost on redeploy).
+
+### Option A: Create the bucket from the terminal (recommended)
+
+Firebase Storage needs a Cloud Storage bucket. Some regions don’t support no-cost buckets, and **the project must have billing enabled** (Blaze / pay-as-you-go) to create a bucket.
+
+1. **Enable billing** for the Firebase project: [Firebase Console](https://console.firebase.google.com/) → Project settings → Usage and billing → Modify plan → Blaze.
+2. In terminal (with [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) installed and logged in):
+
+   ```bash
+   gcloud config set project bilyar
+   gcloud services enable storage-component.googleapis.com storage-api.googleapis.com --project=bilyar
+   gcloud storage buckets create gs://bilyar.appspot.com --location=us-central1 --project=bilyar
+   ```
+
+3. In Firebase Console → **Storage** → **Rules**, paste the rules below. **Do not copy any backticks or markdown**—only the rule lines. Or copy from the file `storage.rules` in the project root.
+
+   rules_version = '2';
+   service firebase.storage {
+     match /b/{bucket}/o {
+       match /products/{allPaths=**} {
+         allow read: if true;
+         allow write: if false;
+       }
+     }
+   }
+
+### Option B: Use the Firebase Console
+
+If your project region supports it: **Build** → **Storage** → **Get started**, pick a location, then set the rules above.
+
+### If you don’t set up Storage
+
+The app still runs. Admin image uploads go to the server’s `uploads/` folder. On Render they disappear on redeploy; for a permanent store, create the bucket (Option A).

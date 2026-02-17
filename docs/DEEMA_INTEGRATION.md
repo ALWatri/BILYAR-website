@@ -20,16 +20,18 @@ Use separate config for Sandbox and Live.
 
 | Variable | Sandbox | Live |
 |----------|---------|------|
-| `DEEMA_BASE_URL` | `https://staging-api.deema.me` | `https://api.deema.me` |
+| `DEEMA_BASE_URL` | `https://sandbox-api.deema.me` or `https://staging-api.deema.me` | `https://api.deema.me` |
 | `DEEMA_API_KEY` | From Merchant Portal (Sandbox) | From Deema after go-live |
 | `DEEMA_WEBHOOK_SECRET` | Same value as in Portal → Webhook Headers | Same value as in Live Portal |
+
+The server uses **Basic** auth with the API key (per Deema docs). Sandbox base URL defaults to `sandbox-api.deema.me`; if your portal uses `staging-api.deema.me`, set `DEEMA_BASE_URL=https://staging-api.deema.me`.
 
 In `.env`:
 
 ```bash
 # Sandbox (default)
 DEEMA_API_KEY=your_sandbox_api_key
-DEEMA_BASE_URL=https://staging-api.deema.me
+DEEMA_BASE_URL=https://sandbox-api.deema.me
 DEEMA_WEBHOOK_SECRET=your_secret_from_portal
 
 # Live (after go-live)
