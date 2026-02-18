@@ -492,6 +492,36 @@ export async function registerRoutes(
         });
       }
 
+      const parseJsonOrThrow = async (response: Response, context: string) => {
+        const contentType = response.headers.get("content-type") || "";
+        const text = await response.text();
+        try {
+          return JSON.parse(text);
+        } catch {
+          const snippet = text.length > 800 ? `${text.slice(0, 800)}…` : text;
+          throw new Error(
+            `${context}: Non-JSON response (status ${response.status}, content-type "${contentType}"). Body: ${snippet || "<empty>"}`
+          );
+        }
+      };
+
+      if (!order.customerName?.trim()) {
+        return res.status(400).json({ message: "Customer name is required" });
+      }
+      if (!order.customerEmail?.trim()) {
+        return res.status(400).json({ message: "Customer email is required" });
+      }
+      if (!order.customerPhone?.trim()) {
+        return res.status(400).json({ message: "Customer phone is required" });
+      }
+
+      const customerMobile = order.customerPhone.replace(/\D/g, "").slice(-8);
+      if (customerMobile.length !== 8) {
+        return res.status(400).json({
+          message: "Customer phone must be a valid Kuwait number (8 digits). Please update the phone number and try again.",
+        });
+      }
+
       const baseUrl = getBaseUrl(req);
 
       const response = await fetch(`${MYFATOORAH_BASE_URL}/v2/ExecutePayment`, {
@@ -506,7 +536,7 @@ export async function registerRoutes(
           CustomerName: order.customerName,
           CustomerEmail: order.customerEmail,
           MobileCountryCode: "+965",
-          CustomerMobile: order.customerPhone.replace(/\D/g, "").slice(-8),
+          CustomerMobile: customerMobile,
           CallBackUrl: `${baseUrl}/api/payment/myfatoorah/callback?orderId=${orderId}`,
           ErrorUrl: `${baseUrl}/api/payment/myfatoorah/callback?orderId=${orderId}&error=true`,
           Language: "en",
@@ -519,7 +549,7 @@ export async function registerRoutes(
         }),
       });
 
-      const result = await response.json();
+      const result = await parseJsonOrThrow(response, "MyFatoorah ExecutePayment");
 
       if (result.IsSuccess) {
         await storage.updateOrderPayment(orderId, result.Data.InvoiceId.toString(), "initiated");
@@ -532,7 +562,10 @@ export async function registerRoutes(
       }
     } catch (error: any) {
       console.error("MyFatoorah error:", error);
-      return res.status(500).json({ message: "Payment service error" });
+      return res.status(500).json({
+        message: "Payment service error",
+        details: process.env.NODE_ENV === "production" ? undefined : String(error?.message || error),
+      });
     }
   });
 
@@ -549,6 +582,19 @@ export async function registerRoutes(
 
     try {
       if (MYFATOORAH_API_KEY && paymentId) {
+        const parseJsonOrThrow = async (response: Response, context: string) => {
+          const contentType = response.headers.get("content-type") || "";
+          const text = await response.text();
+          try {
+            return JSON.parse(text);
+          } catch {
+            const snippet = text.length > 800 ? `${text.slice(0, 800)}…` : text;
+            throw new Error(
+              `${context}: Non-JSON response (status ${response.status}, content-type "${contentType}"). Body: ${snippet || "<empty>"}`
+            );
+          }
+        };
+
         const statusRes = await fetch(`${MYFATOORAH_BASE_URL}/v2/GetPaymentStatus`, {
           method: "POST",
           headers: {
@@ -557,7 +603,7 @@ export async function registerRoutes(
           },
           body: JSON.stringify({ Key: paymentId, KeyType: "PaymentId" }),
         });
-        const statusResult = await statusRes.json();
+        const statusResult = await parseJsonOrThrow(statusRes, "MyFatoorah GetPaymentStatus");
 
         if (statusResult.IsSuccess && statusResult.Data?.InvoiceStatus === "Paid") {
           await storage.updateOrderPayment(id, paymentId as string, "paid");

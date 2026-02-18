@@ -49,8 +49,8 @@ export default function OrderSuccess() {
           </div>
 
           {isDemo && (
-            <div className="bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
-              {isRtl ? "هذا وضع تجريبي - بوابة الدفع غير مفعلة بعد" : "Demo mode - payment gateway is not configured yet"}
+            <div className="bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800 rounded-md">
+              {t.demo_banner}
             </div>
           )}
 

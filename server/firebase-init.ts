@@ -1,6 +1,7 @@
 import { createRequire } from "module";
 import { getApps } from "firebase-admin/app";
 import { readFileSync } from "fs";
+import type { Bucket } from "@google-cloud/storage";
 
 declare const __filename: string | undefined;
 const admin = (typeof __filename !== "undefined"
@@ -59,7 +60,7 @@ export function initFirebase(): ReturnType<typeof admin.app> {
 }
 
 /** Returns the default Storage bucket when Firebase is already initialized (e.g. when using Firestore); null otherwise. */
-export function getFirebaseStorageBucket(): import("firebase-admin").storage.Bucket | null {
+export function getFirebaseStorageBucket(): Bucket | null {
   if (getApps().length === 0) return null;
   return admin.storage().bucket();
 }

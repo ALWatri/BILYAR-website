@@ -123,6 +123,7 @@ export const translations = {
       order_id: "Order ID",
       date: "Date",
       customer: "Customer",
+      payment_method: "Payment Method",
       status: "Status",
       total: "Total",
       actions: "Actions",
@@ -224,6 +225,7 @@ export const translations = {
     order_confirmation: {
       success_title: "Order Confirmed!",
       success_desc: "Thank you for your order. You will receive a confirmation email shortly.",
+      demo_banner: "Demo mode — no payment was taken. Configure MyFatoorah or Deema in Admin → Settings to accept real payments.",
       failed_title: "Payment Failed",
       failed_desc: "Your payment could not be processed. Please try again.",
       order_number: "Order Number",
@@ -355,6 +357,7 @@ export const translations = {
       order_id: "رقم الطلب",
       date: "التاريخ",
       customer: "العميل",
+      payment_method: "طريقة الدفع",
       status: "الحالة",
       total: "الإجمالي",
       actions: "إجراءات",
@@ -456,6 +459,7 @@ export const translations = {
     order_confirmation: {
       success_title: "تم تأكيد الطلب!",
       success_desc: "شكراً لطلبك. ستتلقين رسالة تأكيد بالبريد الإلكتروني قريباً.",
+      demo_banner: "وضع تجريبي — لم يتم خصم أي مبلغ. فعّلي MyFatoorah أو Deema من الإعدادات لقبول الدفع الحقيقي.",
       failed_title: "فشل الدفع",
       failed_desc: "لم يتم معالجة الدفع. يرجى المحاولة مرة أخرى.",
       order_number: "رقم الطلب",
