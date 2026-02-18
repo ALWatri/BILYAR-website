@@ -698,16 +698,18 @@ export async function registerRoutes(
     const { orderId, status } = req.query;
     const baseUrl = getBaseUrl(req);
     const id = parseInt(orderId as string);
+    console.log("Deema callback:", { orderId, status, query: req.query });
 
-    if (status === "success") {
-      await storage.updateOrderPayment(id, "", "paid");
-      await storage.updateOrderStatus(id, "Paid");
-      return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
-    } else {
+    // Treat as success unless Deema explicitly sent status=failed (e.g. they may omit params or use "completed")
+    const isFailure = String(status).toLowerCase() === "failed";
+    if (isFailure) {
       await storage.updateOrderPayment(id, "", "failed");
       await storage.updateOrderStatus(id, "Cancelled");
       return res.redirect(`${baseUrl}/order/failed?orderId=${orderId}`);
     }
+    await storage.updateOrderPayment(id, "", "paid");
+    await storage.updateOrderStatus(id, "Paid");
+    return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
   });
 
   app.post("/api/payment/deema/webhook", async (req, res) => {
@@ -720,26 +722,32 @@ export async function registerRoutes(
 
     try {
       console.log("Deema webhook received:", JSON.stringify(req.body));
-      const { order_reference, status, merchant_order_id } = req.body;
+      const orderRef = req.body.order_ref ?? req.body.order_reference;
+      const merchantOrderId = req.body.merchant_order_ref ?? req.body.merchant_order_id;
+      const status = String(req.body.status || "");
 
       const orders = await storage.getOrders();
       const order = orders.find(o =>
-        o.paymentId === order_reference ||
-        o.id === Number(merchant_order_id)
+        o.paymentId === orderRef ||
+        o.id === Number(merchantOrderId)
       );
 
       if (order) {
-        if (status === "Captured") {
-          await storage.updateOrderPayment(order.id, order_reference || "", "paid");
+        if (status.toLowerCase() === "captured") {
+          await storage.updateOrderPayment(order.id, orderRef || "", "paid");
           await storage.updateOrderStatus(order.id, "Paid");
           console.log(`Deema webhook: Order ${order.id} payment captured`);
-        } else if (status === "Expired" || status === "Cancelled") {
-          await storage.updateOrderPayment(order.id, order_reference || "", "failed");
-          await storage.updateOrderStatus(order.id, "Cancelled");
-          console.log(`Deema webhook: Order ${order.id} payment ${status}`);
+        } else if (status.toLowerCase() === "expired" || status.toLowerCase() === "cancelled") {
+          // Don't overwrite if we already marked as paid (e.g. from callback) so successful payments aren't flipped to failed
+          const currentPaymentStatus = (order as { paymentStatus?: string }).paymentStatus;
+          if (currentPaymentStatus !== "paid") {
+            await storage.updateOrderPayment(order.id, orderRef || "", "failed");
+            await storage.updateOrderStatus(order.id, "Cancelled");
+            console.log(`Deema webhook: Order ${order.id} payment ${status}`);
+          }
         }
       } else {
-        console.warn("Deema webhook: order not found", { order_reference, merchant_order_id });
+        console.warn("Deema webhook: order not found", { orderRef, merchantOrderId });
       }
 
       return res.status(200).json({ received: true });
