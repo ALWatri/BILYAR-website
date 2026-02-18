@@ -2,16 +2,22 @@ import { getFirestore, type DocumentSnapshot } from "firebase-admin/firestore";
 import { initFirebase } from "./firebase-init";
 import type {
   Product,
+  Category,
+  Collection,
   Order,
   OrderItem,
   Settings,
   InsertProduct,
+  InsertCategory,
+  InsertCollection,
   InsertOrder,
   InsertOrderItem,
 } from "@shared/schema";
 
 const COLL = {
   products: "products",
+  categories: "categories",
+  collections: "collections",
   orders: "orders",
   orderItems: "order_items",
   settings: "settings",
@@ -40,6 +46,29 @@ function toProduct(doc: DocumentSnapshot): Product {
     hasTrouser: d.hasTrouser ?? false,
     sku: d.sku ?? null,
     outOfStock: d.outOfStock ?? false,
+  };
+}
+
+function toCategory(doc: DocumentSnapshot): Category {
+  const d = doc.data()!;
+  return {
+    id: d.id,
+    name: d.name,
+    nameAr: d.nameAr,
+    isActive: d.isActive ?? true,
+  };
+}
+
+function toCollection(doc: DocumentSnapshot): Collection {
+  const d = doc.data()!;
+  return {
+    id: d.id,
+    title: d.title,
+    titleAr: d.titleAr,
+    description: d.description ?? "",
+    descriptionAr: d.descriptionAr ?? "",
+    image: d.image ?? "",
+    isActive: d.isActive ?? true,
   };
 }
 
@@ -98,12 +127,12 @@ function toSettings(doc: DocumentSnapshot): Settings {
   };
 }
 
-async function nextId(collection: "products" | "orders" | "orderItems"): Promise<number> {
+async function nextId(collection: "products" | "categories" | "collections" | "orders" | "orderItems"): Promise<number> {
   const db = getDb();
   const ref = db.collection(COLL.counters).doc("next");
   const result = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    const data = snap.data() ?? { products: 0, orders: 0, orderItems: 0 };
+    const data = snap.data() ?? { products: 0, categories: 0, collections: 0, orders: 0, orderItems: 0 };
     const key = collection === "orderItems" ? "orderItems" : collection;
     const next = (data[key] ?? 0) + 1;
     tx.set(ref, { ...data, [key]: next });
@@ -118,6 +147,16 @@ export interface IStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: number, data: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: number): Promise<boolean>;
+
+  getCategories(): Promise<Category[]>;
+  createCategory(category: InsertCategory): Promise<Category>;
+  updateCategory(id: number, data: Partial<InsertCategory>): Promise<Category | undefined>;
+  deleteCategory(id: number): Promise<boolean>;
+
+  getCollections(): Promise<Collection[]>;
+  createCollection(collection: InsertCollection): Promise<Collection>;
+  updateCollection(id: number, data: Partial<InsertCollection>): Promise<Collection | undefined>;
+  deleteCollection(id: number): Promise<boolean>;
 
   getOrders(): Promise<(Order & { items: OrderItem[] })[]>;
   getOrder(id: number): Promise<(Order & { items: OrderItem[] }) | undefined>;
@@ -195,6 +234,91 @@ export class FirestoreStorage implements IStorage {
   async deleteProduct(id: number): Promise<boolean> {
     const db = getDb();
     const ref = db.collection(COLL.products).doc(String(id));
+    const snap = await ref.get();
+    if (!snap.exists) return false;
+    await ref.delete();
+    return true;
+  }
+
+  async getCategories(): Promise<Category[]> {
+    const db = getDb();
+    const snap = await db.collection(COLL.categories).orderBy("id").get();
+    return snap.docs.map((doc) => toCategory(doc));
+  }
+
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const db = getDb();
+    const id = await nextId("categories");
+    const docRef = db.collection(COLL.categories).doc(String(id));
+    const data = {
+      id,
+      name: category.name,
+      nameAr: category.nameAr,
+      isActive: category.isActive ?? true,
+    };
+    await docRef.set(data);
+    return data as Category;
+  }
+
+  async updateCategory(id: number, data: Partial<InsertCategory>): Promise<Category | undefined> {
+    const db = getDb();
+    const ref = db.collection(COLL.categories).doc(String(id));
+    const snap = await ref.get();
+    if (!snap.exists) return undefined;
+    const update: Record<string, unknown> = { ...data };
+    if (Object.keys(update).length === 0) return toCategory(snap);
+    await ref.update(update);
+    const updated = await ref.get();
+    return toCategory(updated);
+  }
+
+  async deleteCategory(id: number): Promise<boolean> {
+    const db = getDb();
+    const ref = db.collection(COLL.categories).doc(String(id));
+    const snap = await ref.get();
+    if (!snap.exists) return false;
+    await ref.delete();
+    return true;
+  }
+
+  async getCollections(): Promise<Collection[]> {
+    const db = getDb();
+    const snap = await db.collection(COLL.collections).orderBy("id").get();
+    return snap.docs.map((doc) => toCollection(doc));
+  }
+
+  async createCollection(collection: InsertCollection): Promise<Collection> {
+    const db = getDb();
+    const id = await nextId("collections");
+    const docRef = db.collection(COLL.collections).doc(String(id));
+    const data = {
+      id,
+      title: collection.title,
+      titleAr: collection.titleAr,
+      description: collection.description ?? "",
+      descriptionAr: collection.descriptionAr ?? "",
+      image: collection.image ?? "",
+      isActive: collection.isActive ?? true,
+    };
+    await docRef.set(data);
+    return data as Collection;
+  }
+
+  async updateCollection(id: number, data: Partial<InsertCollection>): Promise<Collection | undefined> {
+    const db = getDb();
+    const ref = db.collection(COLL.collections).doc(String(id));
+    const snap = await ref.get();
+    if (!snap.exists) return undefined;
+    const update: Record<string, unknown> = { ...data };
+    if (Object.keys(update).length === 0) return toCollection(snap);
+    await ref.update(update);
+    const updated = await ref.get();
+    return toCollection(updated);
+  }
+
+  async deleteCollection(id: number): Promise<boolean> {
+    const db = getDb();
+    const ref = db.collection(COLL.collections).doc(String(id));
     const snap = await ref.get();
     if (!snap.exists) return false;
     await ref.delete();

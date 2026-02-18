@@ -22,3 +22,7 @@ services:
         sync: false
       - key: MYFATOORAH_API_KEY
         sync: false
+      - key: MYFATOORAH_BASE_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false

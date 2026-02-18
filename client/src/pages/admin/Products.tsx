@@ -28,12 +28,12 @@ import {
 import { cn } from "@/lib/utils";
 import { translations } from "@/lib/translations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Product } from "@/lib/data";
+import type { Category, Product } from "@/lib/data";
 import { Package, Pencil, Trash2, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const CATEGORIES_EN = ["Outerwear", "Sets", "Dresses", "Tops", "Accessories"];
-const CATEGORIES_AR = ["ملابس خارجية", "أطقم", "فساتين", "قمصان", "إكسسوارات"];
+const FALLBACK_CATEGORIES_EN = ["Outerwear", "Sets", "Dresses", "Tops", "Accessories"];
+const FALLBACK_CATEGORIES_AR = ["ملابس خارجية", "أطقم", "فساتين", "قمصان", "إكسسوارات"];
 
 const emptyForm = () => ({
   name: "",
@@ -120,6 +120,10 @@ export default function Products() {
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
+  });
+
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ["/api/categories"],
   });
 
   const createMutation = useMutation({
@@ -344,12 +348,22 @@ export default function Products() {
                 <Label>{t.category}</Label>
                 <select
                   value={form.category}
-                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value, categoryAr: CATEGORIES_AR[CATEGORIES_EN.indexOf(e.target.value)] || f.categoryAr }))}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const match = categories.find((c) => c.name === value);
+                    setForm((f) => ({
+                      ...f,
+                      category: value,
+                      categoryAr: match?.nameAr || FALLBACK_CATEGORIES_AR[FALLBACK_CATEGORIES_EN.indexOf(value)] || f.categoryAr,
+                    }));
+                  }}
                   className="w-full h-10 rounded-none border border-input bg-background px-3 py-2 text-sm"
                 >
-                  {CATEGORIES_EN.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
+                  {(categories.length ? categories : FALLBACK_CATEGORIES_EN.map((name, idx) => ({ id: idx + 1, name, nameAr: FALLBACK_CATEGORIES_AR[idx] } as unknown as Category)))
+                    .filter((c: any) => c.isActive !== false)
+                    .map((c: any) => (
+                      <option key={c.name} value={c.name}>{c.name}</option>
+                    ))}
                 </select>
               </div>
             </div>

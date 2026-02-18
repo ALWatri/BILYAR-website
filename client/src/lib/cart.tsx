@@ -57,6 +57,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items]);
 
   const addItem = (newItem: CartItem) => {
+    // Hard-block out-of-stock items from being added
+    if ((newItem.product as Product & { outOfStock?: boolean }).outOfStock) {
+      return;
+    }
     setItems(prev => {
       const existing = prev.find(i => i.product.id === newItem.product.id && i.size === newItem.size);
       if (existing) {

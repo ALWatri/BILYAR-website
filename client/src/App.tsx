@@ -16,6 +16,8 @@ import Login from "@/pages/admin/Login";
 import Dashboard from "@/pages/admin/Dashboard";
 import Orders from "@/pages/admin/Orders";
 import Products from "@/pages/admin/Products";
+import Categories from "@/pages/admin/Categories";
+import Collections from "@/pages/admin/Collections";
 import Customers from "@/pages/admin/Customers";
 import Settings from "@/pages/admin/Settings";
 
@@ -37,6 +39,8 @@ function Router() {
       <Route path="/admin" component={Dashboard}/>
       <Route path="/admin/orders" component={Orders}/>
       <Route path="/admin/products" component={Products}/>
+      <Route path="/admin/categories" component={Categories}/>
+      <Route path="/admin/collections" component={Collections}/>
       <Route path="/admin/customers" component={Customers}/>
       <Route path="/admin/settings" component={Settings}/>
 

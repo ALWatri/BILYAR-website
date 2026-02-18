@@ -2,8 +2,10 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import { eq, desc, or, ilike } from "drizzle-orm";
 import {
-  products, orders, orderItems, settings,
+  products, categories, collections, orders, orderItems, settings,
   type Product, type InsertProduct,
+  type Category, type InsertCategory,
+  type Collection, type InsertCollection,
   type Order, type InsertOrder,
   type OrderItem, type InsertOrderItem,
   type Settings,
@@ -18,6 +20,16 @@ export interface IStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: number, data: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: number): Promise<boolean>;
+
+  getCategories(): Promise<Category[]>;
+  createCategory(category: InsertCategory): Promise<Category>;
+  updateCategory(id: number, data: Partial<InsertCategory>): Promise<Category | undefined>;
+  deleteCategory(id: number): Promise<boolean>;
+
+  getCollections(): Promise<Collection[]>;
+  createCollection(collection: InsertCollection): Promise<Collection>;
+  updateCollection(id: number, data: Partial<InsertCollection>): Promise<Collection | undefined>;
+  deleteCollection(id: number): Promise<boolean>;
 
   getOrders(): Promise<(Order & { items: OrderItem[] })[]>;
   getOrder(id: number): Promise<(Order & { items: OrderItem[] }) | undefined>;
@@ -64,6 +76,44 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProduct(id: number): Promise<boolean> {
     const result = await db.delete(products).where(eq(products.id, id)).returning({ id: products.id });
+    return result.length > 0;
+  }
+
+  async getCategories(): Promise<Category[]> {
+    return db.select().from(categories);
+  }
+
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const [created] = await db.insert(categories).values(category).returning();
+    return created;
+  }
+
+  async updateCategory(id: number, data: Partial<InsertCategory>): Promise<Category | undefined> {
+    const [updated] = await db.update(categories).set(data).where(eq(categories.id, id)).returning();
+    return updated;
+  }
+
+  async deleteCategory(id: number): Promise<boolean> {
+    const result = await db.delete(categories).where(eq(categories.id, id)).returning({ id: categories.id });
+    return result.length > 0;
+  }
+
+  async getCollections(): Promise<Collection[]> {
+    return db.select().from(collections);
+  }
+
+  async createCollection(collection: InsertCollection): Promise<Collection> {
+    const [created] = await db.insert(collections).values(collection).returning();
+    return created;
+  }
+
+  async updateCollection(id: number, data: Partial<InsertCollection>): Promise<Collection | undefined> {
+    const [updated] = await db.update(collections).set(data).where(eq(collections.id, id)).returning();
+    return updated;
+  }
+
+  async deleteCollection(id: number): Promise<boolean> {
+    const result = await db.delete(collections).where(eq(collections.id, id)).returning({ id: collections.id });
     return result.length > 0;
   }
 

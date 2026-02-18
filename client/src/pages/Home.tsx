@@ -2,7 +2,6 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/ui/ProductCard";
-import { collections } from "@/lib/data";
 import type { Product } from "@/lib/data";
 import { ArrowRight, Star } from "lucide-react";
 import { Link } from "wouter";
@@ -74,35 +73,7 @@ export default function Home() {
             <Button size="lg" className="bg-white text-black hover:bg-accent hover:text-white border-0 text-xs md:text-sm uppercase tracking-widest px-8 py-6 rounded-none min-w-[200px]">
               {t.shop_now}
             </Button>
-            <Button size="lg" variant="outline" className="text-white border-white hover:bg-white hover:text-black text-xs md:text-sm uppercase tracking-widest px-8 py-6 rounded-none min-w-[200px] bg-transparent backdrop-blur-sm">
-              {t.explore}
-            </Button>
           </motion.div>
-        </div>
-      </section>
-
-      <section className="py-24 bg-background">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-serif mb-4">{t.curated}</h2>
-            <p className="text-muted-foreground max-w-lg mx-auto">Discover our hand-picked selections, crafted for the discerning woman who values quality above all else.</p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            {collections.map((col) => (
-              <Link key={col.id} href={`/shop?collection=${col.id}`} className="group cursor-pointer">
-                <div className="relative aspect-[3/4] overflow-hidden mb-6">
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors z-10" />
-                  <img src={col.image} alt={col.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                  <div className={cn("absolute bottom-8 z-20 text-white", isRtl ? "right-8" : "left-8")}>
-                    <h3 className="text-2xl font-serif mb-2">{col.title}</h3>
-                    <div className="h-[1px] w-12 bg-accent group-hover:w-24 transition-all duration-500" />
-                  </div>
-                </div>
-                <p className="text-muted-foreground text-sm group-hover:text-primary transition-colors">{col.description}</p>
-              </Link>
-            ))}
-          </div>
         </div>
       </section>
 

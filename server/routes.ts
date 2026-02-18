@@ -29,7 +29,8 @@ function uniqueFilename(ext: string): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}${ext}`;
 }
 
-const MYFATOORAH_BASE_URL = process.env.MYFATOORAH_BASE_URL || "https://demo.myfatoorah.com";
+// Test: https://apitest.myfatoorah.com/ | Live Kuwait: https://api.myfatoorah.com/
+const MYFATOORAH_BASE_URL = process.env.MYFATOORAH_BASE_URL || "https://apitest.myfatoorah.com";
 const MYFATOORAH_API_KEY = process.env.MYFATOORAH_API_KEY || "";
 // Sandbox: https://sandbox-api.deema.me or https://staging-api.deema.me. Live: https://api.deema.me
 const DEEMA_BASE_URL = process.env.DEEMA_BASE_URL || "https://sandbox-api.deema.me";
@@ -155,6 +156,107 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  // ===== CATEGORIES =====
+  const insertCategorySchema = z.object({
+    name: z.string().min(1),
+    nameAr: z.string().min(1),
+    isActive: z.boolean().optional().default(true),
+  });
+
+  app.get("/api/categories", async (_req, res) => {
+    const categories = await storage.getCategories();
+    res.json(categories);
+  });
+
+  app.post("/api/categories", async (req, res) => {
+    try {
+      const data = insertCategorySchema.parse(req.body);
+      const created = await storage.createCategory(data);
+      res.status(201).json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      throw error;
+    }
+  });
+
+  app.patch("/api/categories/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid category ID" });
+    try {
+      const data = insertCategorySchema.partial().parse(req.body);
+      const updated = await storage.updateCategory(id, data);
+      if (!updated) return res.status(404).json({ message: "Category not found" });
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      throw error;
+    }
+  });
+
+  app.delete("/api/categories/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid category ID" });
+    const deleted = await storage.deleteCategory(id);
+    if (!deleted) return res.status(404).json({ message: "Category not found" });
+    res.status(204).send();
+  });
+
+  // ===== COLLECTIONS =====
+  const insertCollectionSchema = z.object({
+    title: z.string().min(1),
+    titleAr: z.string().min(1),
+    description: z.string().optional().default(""),
+    descriptionAr: z.string().optional().default(""),
+    image: z.string().optional().default(""),
+    isActive: z.boolean().optional().default(true),
+  });
+
+  app.get("/api/collections", async (_req, res) => {
+    const collections = await storage.getCollections();
+    res.json(collections);
+  });
+
+  app.post("/api/collections", async (req, res) => {
+    try {
+      const data = insertCollectionSchema.parse(req.body);
+      const created = await storage.createCollection(data);
+      res.status(201).json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      throw error;
+    }
+  });
+
+  app.patch("/api/collections/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid collection ID" });
+    try {
+      const data = insertCollectionSchema.partial().parse(req.body);
+      const updated = await storage.updateCollection(id, data);
+      if (!updated) return res.status(404).json({ message: "Collection not found" });
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      throw error;
+    }
+  });
+
+  app.delete("/api/collections/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid collection ID" });
+    const deleted = await storage.deleteCollection(id);
+    if (!deleted) return res.status(404).json({ message: "Collection not found" });
+    res.status(204).send();
+  });
+
   app.get("/api/orders", async (_req, res) => {
     const orders = await storage.getOrders();
     res.json(orders);
@@ -193,7 +295,23 @@ export async function registerRoutes(
   app.post("/api/orders", async (req, res) => {
     try {
       const data = createOrderSchema.parse(req.body);
-      const subtotal = data.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+      // Validate products server-side (prevents ordering out-of-stock items and price tampering)
+      const productsById = new Map<number, Awaited<ReturnType<typeof storage.getProduct>>>();
+      for (const item of data.items) {
+        const p = await storage.getProduct(item.productId);
+        if (!p) {
+          return res.status(400).json({ message: `Product not found: ${item.productId}` });
+        }
+        if ((p as any).outOfStock) {
+          return res.status(400).json({ message: `Product is out of stock: ${p.name}` });
+        }
+        productsById.set(item.productId, p);
+      }
+
+      const subtotal = data.items.reduce((acc, item) => {
+        const p = productsById.get(item.productId)!;
+        return acc + p.price * item.quantity;
+      }, 0);
       const s = await storage.getSettings();
       const threshold = s?.freeShippingThreshold ?? 90;
       const defaultCost = s?.defaultShippingCost ?? 5;
@@ -210,13 +328,14 @@ export async function registerRoutes(
       const itemsWithNotesEn = await Promise.all(
         data.items.map(async (item) => {
           const notesEn = item.notes ? await translateToEnglish(item.notes) : null;
+          const p = productsById.get(item.productId)!;
           return {
             orderId: 0,
             productId: item.productId,
-            productName: item.productName,
+            productName: item.productName || p.name,
             quantity: item.quantity,
-            price: item.price,
-            image: item.image,
+            price: p.price,
+            image: p.images?.[0] || item.image,
             size: item.size || null,
             measurements: item.measurements || null,
             notes: item.notes || null,

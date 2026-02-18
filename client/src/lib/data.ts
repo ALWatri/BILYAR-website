@@ -1,6 +1,6 @@
-import type { Product, Order, OrderItem } from "@shared/schema";
+import type { Product, Category, Collection, Order, OrderItem } from "@shared/schema";
 
-export type { Product, Order, OrderItem };
+export type { Product, Category, Collection, Order, OrderItem };
 
 export interface OrderWithItems extends Order {
   items: OrderItem[];

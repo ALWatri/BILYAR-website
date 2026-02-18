@@ -14,7 +14,7 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { translations } from "@/lib/translations";
 import { useQuery } from "@tanstack/react-query";
-import type { Product } from "@/lib/data";
+import type { Category, Product } from "@/lib/data";
 
 export default function Shop() {
   const [lang, setLang] = useState<"en" | "ar">("en");
@@ -47,25 +47,26 @@ export default function Shop() {
   const t = translations[lang].shop;
   const isRtl = lang === "ar";
 
-  const categories = isRtl 
-    ? ["الكل", "فساتين", "ملابس خارجية", "إكسسوارات", "أطقم", "قمصان"]
-    : ["All", "Dresses", "Outerwear", "Accessories", "Sets", "Tops"];
+  const { data: apiCategories = [] } = useQuery<Category[]>({
+    queryKey: ["/api/categories"],
+  });
 
-  const catMap: Record<string, string> = isRtl ? {
-    "الكل": "All",
-    "فساتين": "Dresses",
-    "ملابس خارجية": "Outerwear",
-    "إكسسوارات": "Accessories",
-    "أطقم": "Sets",
-    "قمصان": "Tops"
-  } : {
-    "All": "All",
-    "Dresses": "Dresses",
-    "Outerwear": "Outerwear",
-    "Accessories": "Accessories",
-    "Sets": "Sets",
-    "Tops": "Tops"
-  };
+  const fallback = [
+    { labelEn: "Dresses", labelAr: "فساتين" },
+    { labelEn: "Outerwear", labelAr: "ملابس خارجية" },
+    { labelEn: "Accessories", labelAr: "إكسسوارات" },
+    { labelEn: "Sets", labelAr: "أطقم" },
+    { labelEn: "Tops", labelAr: "قمصان" },
+  ];
+
+  const categoryOptions = [
+    { label: isRtl ? "الكل" : "All", value: "All" },
+    ...(apiCategories.length
+      ? apiCategories
+          .filter((c: any) => c.isActive !== false)
+          .map((c) => ({ label: isRtl ? c.nameAr : c.name, value: c.name }))
+      : fallback.map((c) => ({ label: isRtl ? c.labelAr : c.labelEn, value: c.labelEn }))),
+  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -93,18 +94,18 @@ export default function Shop() {
               />
             </div>
             <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 no-scrollbar">
-            {categories.map((cat) => (
+            {categoryOptions.map((cat) => (
               <button
-                key={cat}
-                onClick={() => setFilter(catMap[cat])}
-                data-testid={`button-filter-${catMap[cat]}`}
+                key={cat.value}
+                onClick={() => setFilter(cat.value)}
+                data-testid={`button-filter-${cat.value}`}
                 className={`px-4 py-2 text-sm uppercase tracking-wider transition-colors whitespace-nowrap ${
-                  (filter === catMap[cat]) 
+                  (filter === cat.value) 
                     ? "text-primary font-bold border-b-2 border-primary" 
                     : "text-muted-foreground hover:text-primary"
                 }`}
               >
-                {cat}
+                {cat.label}
               </button>
             ))}
             </div>

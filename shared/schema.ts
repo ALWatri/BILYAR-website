@@ -20,6 +20,23 @@ export const products = pgTable("products", {
   outOfStock: boolean("out_of_stock").default(false),
 });
 
+export const categories = pgTable("categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  nameAr: text("name_ar").notNull(),
+  isActive: boolean("is_active").default(true),
+});
+
+export const collections = pgTable("collections", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  titleAr: text("title_ar").notNull(),
+  description: text("description").notNull().default(""),
+  descriptionAr: text("description_ar").notNull().default(""),
+  image: text("image").notNull().default(""),
+  isActive: boolean("is_active").default(true),
+});
+
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   orderNumber: text("order_number").notNull().unique(),
@@ -67,11 +84,17 @@ export const settings = pgTable("settings", {
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });
+export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
+export const insertCollectionSchema = createInsertSchema(collections).omit({ id: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, orderNumber: true, createdAt: true });
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });
 
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
+export type Category = typeof categories.$inferSelect;
+export type InsertCollection = z.infer<typeof insertCollectionSchema>;
+export type Collection = typeof collections.$inferSelect;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type Order = typeof orders.$inferSelect;
 export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
