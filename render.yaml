@@ -26,3 +26,9 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      - key: SITE_URL
+        sync: false
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false

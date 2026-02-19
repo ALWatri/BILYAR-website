@@ -5,6 +5,14 @@ import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useCart } from "@/lib/cart";
 import { translations } from "@/lib/translations";
 import { cn } from "@/lib/utils";
@@ -18,6 +26,8 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState<"myfatoorah" | "deema">("myfatoorah");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [acknowledged, setAcknowledged] = useState(false);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -44,8 +54,19 @@ export default function Checkout() {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handlePlaceOrderClick = (e: React.FormEvent) => {
     e.preventDefault();
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmAndSubmit = async () => {
+    if (!acknowledged) return;
+    setConfirmOpen(false);
+    setAcknowledged(false);
+    await doSubmit();
+  };
+
+  const doSubmit = async () => {
     setIsSubmitting(true);
     setError("");
 
@@ -101,6 +122,11 @@ export default function Checkout() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handlePlaceOrderClick(e);
   };
 
   if (items.length === 0) {
@@ -342,6 +368,36 @@ export default function Checkout() {
               </div>
             </div>
           </form>
+
+          <Dialog open={confirmOpen} onOpenChange={(open) => { setConfirmOpen(open); if (!open) setAcknowledged(false); }}>
+            <DialogContent className="max-w-md" dir={isRtl ? "rtl" : "ltr"}>
+              <DialogHeader>
+                <DialogTitle>{t.order_confirm_title}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <ol className="list-decimal list-inside space-y-3 text-sm text-foreground">
+                  <li>{t.order_confirm_1}</li>
+                  <li>{t.order_confirm_2}</li>
+                </ol>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <Checkbox
+                    checked={acknowledged}
+                    onCheckedChange={(c) => setAcknowledged(!!c)}
+                    className="mt-0.5"
+                  />
+                  <span className="text-sm">{t.order_confirm_checkbox}</span>
+                </label>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setConfirmOpen(false); setAcknowledged(false); }}>
+                  {t.order_confirm_cancel}
+                </Button>
+                <Button onClick={handleConfirmAndSubmit} disabled={!acknowledged || isSubmitting}>
+                  {t.order_confirm_proceed}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </main>
       <Footer />

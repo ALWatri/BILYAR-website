@@ -7,6 +7,8 @@ import multer from "multer";
 import type { IStorage } from "./storage";
 import { getFirebaseStorageBucket } from "./firebase-init";
 import { translateToEnglish } from "./translate";
+import { generateInvoicePdf } from "./invoice-pdf";
+import { isWhatsAppConfigured, sendTemplate, sendDocument, sendText } from "./whatsapp";
 import { z } from "zod";
 
 const UPLOADS_DIR = path.join(process.env.UPLOADS_DIR || process.cwd(), "uploads");
@@ -271,6 +273,22 @@ export async function registerRoutes(
     res.json(order);
   });
 
+  app.get("/api/orders/:id/invoice-pdf", async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
+    const order = await storage.getOrder(id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    try {
+      const pdf = await generateInvoicePdf(order);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="invoice-${order.orderNumber}.pdf"`);
+      res.send(pdf);
+    } catch (err) {
+      console.error("Invoice PDF error:", err);
+      res.status(500).json({ message: "Failed to generate invoice" });
+    }
+  });
+
   const createOrderSchema = z.object({
     customer: z.object({
       name: z.string().min(1),
@@ -401,6 +419,7 @@ export async function registerRoutes(
     }
     const updated = await storage.updateOrderStatus(id, status);
     if (!updated) return res.status(404).json({ message: "Order not found" });
+    if (status === "Shipped") sendOrderShippedWhatsApp(id).catch((err) => console.error("WhatsApp order_shipped:", err));
     res.json(updated);
   });
 
@@ -617,11 +636,100 @@ export async function registerRoutes(
     }
   });
 
+  // ===== WHATSAPP =====
+  const SITE_URL = process.env.SITE_URL || "";
+  const WHATSAPP_TEMPLATE_ORDER_RECEIVED = process.env.WHATSAPP_TEMPLATE_ORDER_RECEIVED || "order_received";
+  const WHATSAPP_TEMPLATE_ORDER_SHIPPED = process.env.WHATSAPP_TEMPLATE_ORDER_SHIPPED || "order_shipped";
+  const WHATSAPP_TEMPLATE_MARKETING = process.env.WHATSAPP_TEMPLATE_MARKETING || "marketing_message";
+
+  async function sendOrderReceivedWhatsApp(orderId: number, baseUrl: string) {
+    if (!isWhatsAppConfigured()) return;
+    const order = await storage.getOrder(orderId);
+    if (!order || !order.customerPhone) return;
+    const name = (order as any).customerNameEn || order.customerName;
+    const invoiceUrl = `${baseUrl}/api/orders/${orderId}/invoice-pdf`;
+    const templateRes = await sendTemplate(
+      order.customerPhone,
+      WHATSAPP_TEMPLATE_ORDER_RECEIVED,
+      "en",
+      [name.split(" ")[0] || name, order.orderNumber]
+    );
+    if (!templateRes.ok) {
+      console.error("WhatsApp order_received template:", templateRes.error);
+      return;
+    }
+    const docRes = await sendDocument(order.customerPhone, invoiceUrl, `invoice-${order.orderNumber}.pdf`, `Invoice for order ${order.orderNumber}`);
+    if (!docRes.ok) console.error("WhatsApp invoice document:", docRes.error);
+  }
+
+  async function sendOrderShippedWhatsApp(orderId: number) {
+    if (!isWhatsAppConfigured()) return;
+    const order = await storage.getOrder(orderId);
+    if (!order || !order.customerPhone) return;
+    const name = (order as any).customerNameEn || order.customerName;
+    await sendTemplate(
+      order.customerPhone,
+      WHATSAPP_TEMPLATE_ORDER_SHIPPED,
+      "en",
+      [name.split(" ")[0] || name, order.orderNumber]
+    );
+  }
+
+  app.get("/api/whatsapp/status", (_req, res) => {
+    res.json({
+      configured: isWhatsAppConfigured(),
+      templates: {
+        orderReceived: WHATSAPP_TEMPLATE_ORDER_RECEIVED,
+        orderShipped: WHATSAPP_TEMPLATE_ORDER_SHIPPED,
+        marketing: WHATSAPP_TEMPLATE_MARKETING,
+      },
+    });
+  });
+
+  app.post("/api/whatsapp/send-marketing", async (req, res) => {
+    if (!isWhatsAppConfigured()) return res.status(503).json({ message: "WhatsApp not configured" });
+    const schema = z.object({ phones: z.array(z.string()).min(1), message: z.string().min(1) });
+    try {
+      const { phones, message } = schema.parse(req.body);
+      const results: { phone: string; ok: boolean; error?: string }[] = [];
+      for (const phone of phones) {
+        const r = await sendTemplate(phone, WHATSAPP_TEMPLATE_MARKETING, "en", [message]);
+        results.push({ phone, ok: r.ok, error: r.error });
+      }
+      res.json({ results });
+    } catch (e) {
+      if (e instanceof z.ZodError) return res.status(400).json({ message: "Invalid input", errors: e.errors });
+      throw e;
+    }
+  });
+
+  app.post("/api/whatsapp/send-order-received", async (req, res) => {
+    if (!isWhatsAppConfigured()) return res.status(503).json({ message: "WhatsApp not configured" });
+    const id = parseInt(req.body?.orderId);
+    if (isNaN(id)) return res.status(400).json({ message: "orderId required" });
+    const order = await storage.getOrder(id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    const baseUrl = SITE_URL || getBaseUrl(req);
+    await sendOrderReceivedWhatsApp(id, baseUrl);
+    res.json({ sent: true });
+  });
+
+  app.post("/api/whatsapp/send-order-shipped", async (req, res) => {
+    if (!isWhatsAppConfigured()) return res.status(503).json({ message: "WhatsApp not configured" });
+    const id = parseInt(req.body?.orderId);
+    if (isNaN(id)) return res.status(400).json({ message: "orderId required" });
+    const order = await storage.getOrder(id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    await sendOrderShippedWhatsApp(id);
+    res.json({ sent: true });
+  });
+
   // ===== PAYMENT STATUS CHECK =====
   app.get("/api/payment/status", async (_req, res) => {
     res.json({
       myfatoorah: !!MYFATOORAH_API_KEY,
       deema: !!DEEMA_API_KEY,
+      whatsapp: isWhatsAppConfigured(),
     });
   });
 
@@ -755,12 +863,14 @@ export async function registerRoutes(
         if (statusResult.IsSuccess && statusResult.Data?.InvoiceStatus === "Paid") {
           await storage.updateOrderPayment(id, paymentId as string, "paid");
           await storage.updateOrderStatus(id, "Paid");
+          sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
           return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
         }
       }
 
       await storage.updateOrderPayment(id, paymentId as string || "", "paid");
       await storage.updateOrderStatus(id, "Paid");
+      sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
       return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
     } catch (err) {
       console.error("MyFatoorah callback error:", err);
@@ -856,6 +966,7 @@ export async function registerRoutes(
     }
     await storage.updateOrderPayment(id, "", "paid");
     await storage.updateOrderStatus(id, "Paid");
+    sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
     return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
   });
 
@@ -883,6 +994,8 @@ export async function registerRoutes(
         if (status.toLowerCase() === "captured") {
           await storage.updateOrderPayment(order.id, orderRef || "", "paid");
           await storage.updateOrderStatus(order.id, "Paid");
+          const base = SITE_URL || "https://" + (req.headers["x-forwarded-host"] || req.headers.host || "localhost");
+          sendOrderReceivedWhatsApp(order.id, base).catch((err) => console.error("WhatsApp order_received:", err));
           console.log(`Deema webhook: Order ${order.id} payment captured`);
         } else if (status.toLowerCase() === "expired" || status.toLowerCase() === "cancelled") {
           // Don't overwrite if we already marked as paid (e.g. from callback) so successful payments aren't flipped to failed
