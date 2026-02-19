@@ -17,6 +17,7 @@ export const products = pgTable("products", {
   hasShirt: boolean("has_shirt").default(false),
   hasTrouser: boolean("has_trouser").default(false),
   sku: text("sku"),
+  stockBySize: jsonb("stock_by_size"), // e.g. { "S": 5, "M": 3, "L": 0, "One Size": 2 } — stock per size; if 0, show measurements only
   outOfStock: boolean("out_of_stock").default(false),
 });
 

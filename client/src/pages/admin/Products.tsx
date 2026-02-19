@@ -29,11 +29,11 @@ import { cn } from "@/lib/utils";
 import { translations } from "@/lib/translations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Category, Product } from "@/lib/data";
-import { Package, Pencil, Trash2, Upload, X } from "lucide-react";
+import { Package, Pencil, Trash2, Upload, X, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const FALLBACK_CATEGORIES_EN = ["Outerwear", "Sets", "Dresses", "Tops", "Accessories"];
-const FALLBACK_CATEGORIES_AR = ["ملابس خارجية", "أطقم", "فساتين", "قمصان", "إكسسوارات"];
+
+const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "2XL", "One Size"];
 
 const emptyForm = () => ({
   name: "",
@@ -41,17 +41,32 @@ const emptyForm = () => ({
   description: "",
   descriptionAr: "",
   price: "",
-  category: "Dresses",
-  categoryAr: "فساتين",
+  category: "",
+  categoryAr: "",
   images: "",
   isNew: false,
   hasShirt: false,
   hasTrouser: false,
-  sku: "",
+  stockBySize: [] as { size: string; qty: number }[],
   outOfStock: false,
 });
 
+function getStockStatus(p: Product): "in_stock" | "out_of_stock" {
+  const outOfStock = (p as Product & { outOfStock?: boolean }).outOfStock;
+  if (outOfStock) return "out_of_stock";
+  const sb = (p as Product & { stockBySize?: Record<string, number> | null }).stockBySize;
+  if (sb && typeof sb === "object") {
+    const total = Object.values(sb).reduce((sum, n) => sum + (Number(n) || 0), 0);
+    return total > 0 ? "in_stock" : "out_of_stock";
+  }
+  return "in_stock";
+}
+
 function productToForm(p: Product) {
+  const sb = (p as Product & { stockBySize?: Record<string, number> | null }).stockBySize;
+  const stockBySize = sb && typeof sb === "object"
+    ? Object.entries(sb).map(([size, qty]) => ({ size, qty: Number(qty) || 0 }))
+    : [];
   return {
     name: p.name,
     nameAr: p.nameAr,
@@ -64,7 +79,7 @@ function productToForm(p: Product) {
     isNew: p.isNew ?? false,
     hasShirt: p.hasShirt ?? false,
     hasTrouser: p.hasTrouser ?? false,
-    sku: (p as Product & { sku?: string | null }).sku ?? "",
+    stockBySize,
     outOfStock: (p as Product & { outOfStock?: boolean }).outOfStock ?? false,
   };
 }
@@ -145,7 +160,9 @@ export default function Products() {
           isNew: payload.isNew,
           hasShirt: payload.hasShirt,
           hasTrouser: payload.hasTrouser,
-          sku: payload.sku?.trim() || null,
+          stockBySize: payload.stockBySize?.length
+            ? Object.fromEntries(payload.stockBySize.map((r) => [r.size, r.qty]))
+            : null,
           outOfStock: payload.outOfStock,
         }),
       });
@@ -184,7 +201,9 @@ export default function Products() {
           isNew: payload.isNew,
           hasShirt: payload.hasShirt,
           hasTrouser: payload.hasTrouser,
-          sku: payload.sku?.trim() || null,
+          stockBySize: payload.stockBySize?.length
+            ? Object.fromEntries(payload.stockBySize.map((r) => [r.size, r.qty]))
+            : null,
           outOfStock: payload.outOfStock,
         }),
       });
@@ -234,6 +253,10 @@ export default function Products() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.category?.trim() || !form.categoryAr?.trim()) {
+      toast({ title: categories.length ? "Please select a category" : "Create categories in Categories page first", variant: "destructive" });
+      return;
+    }
     if (editingProduct) {
       updateMutation.mutate({ id: editingProduct.id, payload: form });
     } else {
@@ -296,9 +319,15 @@ export default function Products() {
                   <TableCell className="text-gray-600">{category}</TableCell>
                   <TableCell className={cn("text-right font-medium", isRtl && "text-left")}>{product.price} KWD</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="rounded-sm font-normal bg-green-100 text-green-800 border-green-200">
-                      {t.in_stock}
-                    </Badge>
+                    {getStockStatus(product) === "in_stock" ? (
+                      <Badge variant="outline" className="rounded-sm font-normal bg-green-100 text-green-800 border-green-200">
+                        {t.in_stock}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="rounded-sm font-normal bg-red-100 text-red-800 border-red-200">
+                        {t.out_of_stock}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className={cn("text-right", isRtl && "text-left")}>
                     <div className="flex gap-2 justify-end">
@@ -350,31 +379,89 @@ export default function Products() {
                   value={form.category}
                   onChange={(e) => {
                     const value = e.target.value;
-                    const match = categories.find((c) => c.name === value);
+                    const match = categories.find((c: any) => c.name === value);
                     setForm((f) => ({
                       ...f,
                       category: value,
-                      categoryAr: match?.nameAr || FALLBACK_CATEGORIES_AR[FALLBACK_CATEGORIES_EN.indexOf(value)] || f.categoryAr,
+                      categoryAr: (match as any)?.nameAr ?? f.categoryAr,
                     }));
                   }}
                   className="w-full h-10 rounded-none border border-input bg-background px-3 py-2 text-sm"
                 >
-                  {(categories.length ? categories : FALLBACK_CATEGORIES_EN.map((name, idx) => ({ id: idx + 1, name, nameAr: FALLBACK_CATEGORIES_AR[idx] } as unknown as Category)))
-                    .filter((c: any) => c.isActive !== false)
-                    .map((c: any) => (
-                      <option key={c.name} value={c.name}>{c.name}</option>
-                    ))}
+                  <option value="">{categories.length ? "Select category" : "No categories — create in Categories first"}</option>
+                  {categories.filter((c: any) => c.isActive !== false).map((c: any) => (
+                    <option key={c.name} value={c.name}>{c.name}</option>
+                  ))}
                 </select>
               </div>
             </div>
             <div className="space-y-2">
               <Label>{t.category_ar}</Label>
-              <Input value={form.categoryAr} onChange={(e) => setForm((f) => ({ ...f, categoryAr: e.target.value }))} className="rounded-none" />
+              <select
+                value={form.categoryAr}
+                onChange={(e) => {
+                  const valueAr = e.target.value;
+                  const match = categories.find((c: any) => c.nameAr === valueAr);
+                  setForm((f) => ({
+                    ...f,
+                    categoryAr: valueAr,
+                    category: (match as any)?.name ?? f.category,
+                  }));
+                }}
+                className="w-full h-10 rounded-none border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">{categories.length ? "اختر الفئة" : "لا توجد فئات — أنشئها من صفحة الفئات"}</option>
+                {categories.filter((c: any) => c.isActive !== false).map((c: any) => (
+                  <option key={c.nameAr} value={c.nameAr}>{c.nameAr}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-2">
-              <Label>{t.sku}</Label>
-              <Input value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} className="rounded-none" placeholder="e.g. DR-001" />
-              <p className="text-xs text-muted-foreground">{t.sku_help}</p>
+              <Label>Stock by size</Label>
+              <p className="text-xs text-muted-foreground">Add size and quantity. If 0, customer sees measurements only.</p>
+              <div className="space-y-2">
+                {form.stockBySize.map((row, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <select
+                      value={row.size}
+                      onChange={(e) => setForm((f) => {
+                        const next = [...f.stockBySize];
+                        next[idx] = { ...next[idx], size: e.target.value };
+                        return { ...f, stockBySize: next };
+                      })}
+                      className="h-10 rounded-none border border-input bg-background px-3 py-2 text-sm flex-1 max-w-[120px]"
+                    >
+                      {SIZE_OPTIONS.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={row.qty}
+                      onChange={(e) => setForm((f) => {
+                        const next = [...f.stockBySize];
+                        next[idx] = { ...next[idx], qty: parseInt(e.target.value, 10) || 0 };
+                        return { ...f, stockBySize: next };
+                      })}
+                      className="rounded-none w-20"
+                      placeholder="Qty"
+                    />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => setForm((f) => ({ ...f, stockBySize: f.stockBySize.filter((_, i) => i !== idx) }))}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => setForm((f) => ({ ...f, stockBySize: [...f.stockBySize, { size: "One Size", qty: 0 }] }))}
+                >
+                  <Plus className="h-3 w-3" /> Add size
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>{t.images_placeholder}</Label>

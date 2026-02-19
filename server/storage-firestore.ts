@@ -45,6 +45,7 @@ function toProduct(doc: DocumentSnapshot): Product {
     hasShirt: d.hasShirt ?? false,
     hasTrouser: d.hasTrouser ?? false,
     sku: d.sku ?? null,
+    stockBySize: (d.stockBySize as Record<string, number>) ?? null,
     outOfStock: d.outOfStock ?? false,
   };
 }
@@ -161,8 +162,10 @@ export interface IStorage {
   getOrders(): Promise<(Order & { items: OrderItem[] })[]>;
   getOrder(id: number): Promise<(Order & { items: OrderItem[] }) | undefined>;
   createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order & { items: OrderItem[] }>;
+  updateOrder(id: number, orderData: Partial<InsertOrder>, items?: Omit<InsertOrderItem, "orderId">[]): Promise<(Order & { items: OrderItem[] }) | undefined>;
   updateOrderStatus(id: number, status: string): Promise<Order | undefined>;
   updateOrderPayment(id: number, paymentId: string, paymentStatus: string): Promise<Order | undefined>;
+  deleteOrder(id: number): Promise<boolean>;
 
   getSettings(): Promise<Settings | undefined>;
   updateSettings(data: Partial<Settings>): Promise<Settings>;
@@ -213,6 +216,7 @@ export class FirestoreStorage implements IStorage {
       hasShirt: product.hasShirt ?? false,
       hasTrouser: product.hasTrouser ?? false,
       sku: product.sku ?? null,
+      stockBySize: (product as { stockBySize?: Record<string, number> | null }).stockBySize ?? null,
       outOfStock: product.outOfStock ?? false,
     };
     await docRef.set(data);
@@ -411,6 +415,52 @@ export class FirestoreStorage implements IStorage {
     return order!;
   }
 
+  async updateOrder(id: number, orderData: Partial<InsertOrder>, items?: Omit<InsertOrderItem, "orderId">[]): Promise<(Order & { items: OrderItem[] }) | undefined> {
+    const db = getDb();
+    const orderRef = db.collection(COLL.orders).doc(String(id));
+    const orderSnap = await orderRef.get();
+    if (!orderSnap.exists) return undefined;
+    const { orderNumber: _on, ...data } = orderData as InsertOrder & { orderNumber?: string };
+    if (Object.keys(data).length > 0) await orderRef.update(data);
+    if (items !== undefined) {
+      const itemsSnap = await db.collection(COLL.orderItems).where("orderId", "==", id).get();
+      for (const d of itemsSnap.docs) await d.ref.delete();
+      const newItems: OrderItem[] = [];
+      for (const item of items) {
+        const itemId = await nextId("orderItems");
+        await db.collection(COLL.orderItems).doc(String(itemId)).set({
+          id: itemId,
+          orderId: id,
+          productId: item.productId,
+          productName: item.productName,
+          quantity: item.quantity ?? 1,
+          price: item.price,
+          image: item.image,
+          size: item.size ?? null,
+          measurements: item.measurements ?? null,
+          notes: item.notes ?? null,
+          notesEn: (item as InsertOrderItem & { notesEn?: string | null }).notesEn ?? null,
+        });
+        newItems.push({
+          id: itemId,
+          orderId: id,
+          productId: item.productId,
+          productName: item.productName,
+          quantity: item.quantity ?? 1,
+          price: item.price,
+          image: item.image,
+          size: item.size ?? null,
+          measurements: item.measurements ?? null,
+          notes: item.notes ?? null,
+          notesEn: (item as InsertOrderItem & { notesEn?: string | null }).notesEn ?? null,
+        });
+      }
+      const updatedSnap = await orderRef.get();
+      return { ...toOrder(updatedSnap), items: newItems };
+    }
+    return this.getOrder(id);
+  }
+
   async updateOrderStatus(id: number, status: string): Promise<Order | undefined> {
     const db = getDb();
     const ref = db.collection(COLL.orders).doc(String(id));
@@ -429,6 +479,17 @@ export class FirestoreStorage implements IStorage {
     await ref.update({ paymentId, paymentStatus });
     const updated = await ref.get();
     return toOrder(updated);
+  }
+
+  async deleteOrder(id: number): Promise<boolean> {
+    const db = getDb();
+    const orderRef = db.collection(COLL.orders).doc(String(id));
+    const orderSnap = await orderRef.get();
+    if (!orderSnap.exists) return false;
+    const itemsSnap = await db.collection(COLL.orderItems).where("orderId", "==", id).get();
+    for (const d of itemsSnap.docs) await d.ref.delete();
+    await orderRef.delete();
+    return true;
   }
 
   async getSettings(): Promise<Settings | undefined> {

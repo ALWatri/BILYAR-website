@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Menu, Search, User, Globe } from "lucide-react";
+import { Menu, Search, Globe } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ export function Navbar() {
               <nav className="flex flex-col gap-6 mt-10 flex-1">
                 <Link href="/" className="text-2xl font-serif text-primary hover:text-accent transition-colors">{t.home}</Link>
                 <Link href="/shop" className="text-2xl font-serif text-primary hover:text-accent transition-colors">{t.shop}</Link>
-                <Link href="/collections" className="text-2xl font-serif text-primary hover:text-accent transition-colors">{t.collections}</Link>
+                <Link href="/#collections" className="text-2xl font-serif text-primary hover:text-accent transition-colors">{t.collections}</Link>
                 <Link href="/about" className="text-2xl font-serif text-primary hover:text-accent transition-colors">{t.about}</Link>
                 <Link href="/contact" className="text-2xl font-serif text-primary hover:text-accent transition-colors">{t.contact}</Link>
               </nav>
@@ -69,7 +69,7 @@ export function Navbar() {
             <Link href="/shop" className={cn("text-sm uppercase tracking-widest hover:text-accent transition-colors", textColor)}>
               {t.shop}
             </Link>
-            <Link href="/collections" className={cn("text-sm uppercase tracking-widest hover:text-accent transition-colors", textColor)}>
+            <Link href="/#collections" className={cn("text-sm uppercase tracking-widest hover:text-accent transition-colors", textColor)}>
               {t.collections}
             </Link>
           </nav>
@@ -93,9 +93,6 @@ export function Navbar() {
           </Button>
           <Button variant="ghost" size="icon" className={cn("hover:text-accent transition-colors", textColor)}>
             <Search className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className={cn("hidden md:inline-flex hover:text-accent transition-colors", textColor)}>
-            <User className="h-5 w-5" />
           </Button>
           <div className={cn("hover:text-accent transition-colors", textColor)}>
             <CartDrawer />

@@ -70,14 +70,18 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.4 }}
             className="flex flex-col md:flex-row gap-6"
           >
-            <Button size="lg" className="bg-white text-black hover:bg-accent hover:text-white border-0 text-xs md:text-sm uppercase tracking-widest px-8 py-6 rounded-none min-w-[200px]">
+            <Button
+              size="lg"
+              className="bg-white text-black hover:bg-accent hover:text-white border-0 text-xs md:text-sm uppercase tracking-widest px-8 py-6 rounded-none min-w-[200px]"
+              onClick={() => document.getElementById("collections")?.scrollIntoView({ behavior: "smooth" })}
+            >
               {t.shop_now}
             </Button>
           </motion.div>
         </div>
       </section>
 
-      <section className="py-24 bg-secondary/30">
+      <section id="collections" className="py-24 bg-secondary/30 scroll-mt-20">
         <div className="container mx-auto px-6">
           <div className="flex justify-between items-end mb-12">
             <div>

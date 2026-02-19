@@ -120,6 +120,7 @@ export const translations = {
       successful_orders: "Successful orders",
       pending_abandoned_orders: "Pending & abandoned",
       export_report: "Export Report",
+      create_order: "Create Order",
       order_id: "Order ID",
       date: "Date",
       customer: "Customer",
@@ -195,7 +196,10 @@ export const translations = {
       cancel: "Cancel",
       delete_product_confirm: "Are you sure you want to delete this product?",
       product_saved: "Product saved",
-      product_deleted: "Product deleted"
+      product_deleted: "Product deleted",
+      edit_customer: "Edit Customer",
+      delete_customer: "Delete Customer",
+      delete_customer_confirm: "This will delete all orders for this customer. Are you sure?"
     },
     checkout: {
       title: "Checkout",
@@ -354,6 +358,7 @@ export const translations = {
       successful_orders: "الطلبات الناجحة",
       pending_abandoned_orders: "المعلقة والغير مكتملة",
       export_report: "تصدير التقرير",
+      create_order: "إنشاء طلب",
       order_id: "رقم الطلب",
       date: "التاريخ",
       customer: "العميل",
@@ -429,7 +434,10 @@ export const translations = {
       cancel: "إلغاء",
       delete_product_confirm: "هل أنت متأكد من حذف هذا المنتج؟",
       product_saved: "تم حفظ المنتج",
-      product_deleted: "تم حذف المنتج"
+      product_deleted: "تم حذف المنتج",
+      edit_customer: "تعديل العميل",
+      delete_customer: "حذف العميل",
+      delete_customer_confirm: "سيؤدي ذلك إلى حذف جميع الطلبات لهذا العميل. هل أنت متأكد؟"
     },
     checkout: {
       title: "إتمام الشراء",

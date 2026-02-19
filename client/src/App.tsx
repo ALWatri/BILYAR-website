@@ -11,7 +11,7 @@ import ProductDetails from "@/pages/ProductDetails";
 import Checkout from "@/pages/Checkout";
 import OrderSuccess from "@/pages/OrderSuccess";
 import OrderFailed from "@/pages/OrderFailed";
-import { About, Contact } from "@/pages/StaticPages";
+import { About, Contact, Privacy, Terms } from "@/pages/StaticPages";
 import Login from "@/pages/admin/Login";
 import Dashboard from "@/pages/admin/Dashboard";
 import Orders from "@/pages/admin/Orders";
@@ -32,6 +32,8 @@ function Router() {
       <Route path="/order/failed" component={OrderFailed}/>
       <Route path="/about" component={About}/>
       <Route path="/contact" component={Contact}/>
+      <Route path="/privacy" component={Privacy}/>
+      <Route path="/terms" component={Terms}/>
       <Route path="/collections" component={Shop}/> 
       
       {/* Admin Routes */}

@@ -34,8 +34,10 @@ export interface IStorage {
   getOrders(): Promise<(Order & { items: OrderItem[] })[]>;
   getOrder(id: number): Promise<(Order & { items: OrderItem[] }) | undefined>;
   createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order & { items: OrderItem[] }>;
+  updateOrder(id: number, orderData: Partial<InsertOrder>, items?: Omit<InsertOrderItem, "orderId">[]): Promise<(Order & { items: OrderItem[] }) | undefined>;
   updateOrderStatus(id: number, status: string): Promise<Order | undefined>;
   updateOrderPayment(id: number, paymentId: string, paymentStatus: string): Promise<Order | undefined>;
+  deleteOrder(id: number): Promise<boolean>;
 
   getSettings(): Promise<Settings | undefined>;
   updateSettings(data: Partial<Settings>): Promise<Settings>;
@@ -145,6 +147,25 @@ export class DatabaseStorage implements IStorage {
     return { ...order, items };
   }
 
+  async updateOrder(id: number, orderData: Partial<InsertOrder>, items?: Omit<InsertOrderItem, "orderId">[]): Promise<(Order & { items: OrderItem[] }) | undefined> {
+    const [existing] = await db.select().from(orders).where(eq(orders.id, id));
+    if (!existing) return undefined;
+    const { orderNumber: _on, ...data } = orderData as InsertOrder & { orderNumber?: string };
+    const [updated] = await db.update(orders).set(data).where(eq(orders.id, id)).returning();
+    if (!updated) return undefined;
+    if (items !== undefined) {
+      await db.delete(orderItems).where(eq(orderItems.orderId, id));
+      const newItems: OrderItem[] = [];
+      for (const item of items) {
+        const [created] = await db.insert(orderItems).values({ ...item, orderId: id }).returning();
+        if (created) newItems.push(created);
+      }
+      return { ...updated, items: newItems };
+    }
+    const orderItemsList = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
+    return { ...updated, items: orderItemsList };
+  }
+
   async updateOrderStatus(id: number, status: string): Promise<Order | undefined> {
     const [updated] = await db.update(orders).set({ status }).where(eq(orders.id, id)).returning();
     return updated;
@@ -153,6 +174,12 @@ export class DatabaseStorage implements IStorage {
   async updateOrderPayment(id: number, paymentId: string, paymentStatus: string): Promise<Order | undefined> {
     const [updated] = await db.update(orders).set({ paymentId, paymentStatus }).where(eq(orders.id, id)).returning();
     return updated;
+  }
+
+  async deleteOrder(id: number): Promise<boolean> {
+    await db.delete(orderItems).where(eq(orderItems.orderId, id));
+    const result = await db.delete(orders).where(eq(orders.id, id)).returning({ id: orders.id });
+    return result.length > 0;
   }
 
   async getSettings(): Promise<Settings | undefined> {

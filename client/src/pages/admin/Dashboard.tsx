@@ -26,10 +26,13 @@ export default function Dashboard() {
 
   const t = translations[lang].admin;
 
-  const totalRevenue = orders.reduce((acc, order) => acc + order.total, 0);
+  const paidStatuses = ["Paid", "Processing", "Shipped", "Delivered"];
+  const totalRevenue = orders.filter((o) => paidStatuses.includes(o.status)).reduce((acc, order) => acc + order.total, 0);
   const totalOrders = orders.length;
-  const pendingOrders = orders.filter(o => o.status === "Pending").length;
-  const uniqueCustomers = new Set(orders.map(o => o.customerEmail.toLowerCase())).size;
+  const pendingOrders = orders.filter((o) => o.status === "Pending").length;
+  const uniqueCustomers = new Set(orders.map((o) => o.customerEmail.toLowerCase())).size;
+  const recentPaidOrders = orders.filter((o) => paidStatuses.includes(o.status)).slice(0, 10);
+  const recentRevenue = recentPaidOrders.reduce((acc, o) => acc + o.total, 0);
 
   const stats = [
     {
@@ -88,8 +91,20 @@ export default function Dashboard() {
             <CardTitle>{t.recent_revenue}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[200px] flex items-center justify-center bg-gray-50 border border-dashed border-gray-200 text-gray-400">
-              Chart Placeholder
+            <div className="space-y-4">
+              <p className="text-2xl font-bold text-gray-900">{recentRevenue.toFixed(3)} KWD</p>
+              <p className="text-sm text-gray-500">From last {recentPaidOrders.length} paid orders (Paid, Processing, Shipped, Delivered)</p>
+              {recentPaidOrders.length === 0 && (
+                <p className="text-sm text-muted-foreground py-4">No paid orders yet</p>
+              )}
+              <div className="space-y-2 max-h-[120px] overflow-y-auto">
+                {recentPaidOrders.map((o) => (
+                  <div key={o.id} className="flex justify-between text-sm border-b border-gray-50 pb-2">
+                    <span>{o.orderNumber}</span>
+                    <span className="font-medium">+{o.total} KWD</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>

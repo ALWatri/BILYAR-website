@@ -10,15 +10,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useSearch } from "wouter";
 import { cn } from "@/lib/utils";
 import { translations } from "@/lib/translations";
 import { useQuery } from "@tanstack/react-query";
 import type { Category, Product } from "@/lib/data";
 
+const CAT_MAP: Record<string, string> = { dresses: "Dresses", outerwear: "Outerwear", accessories: "Accessories", sets: "Sets", tops: "Tops" };
+type SortKey = "newest" | "price-asc" | "price-desc" | "bestseller";
+
 export default function Shop() {
+  const searchString = useSearch();
+  const params = new URLSearchParams(searchString);
+  const catParam = params.get("cat")?.toLowerCase();
+  const initialFilter = catParam && CAT_MAP[catParam] ? CAT_MAP[catParam] : "All";
+
   const [lang, setLang] = useState<"en" | "ar">("en");
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState(initialFilter);
+  const [sortBy, setSortBy] = useState<SortKey>("newest");
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -31,6 +41,11 @@ export default function Shop() {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    const f = catParam && CAT_MAP[catParam] ? CAT_MAP[catParam] : "All";
+    setFilter(f);
+  }, [catParam]);
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/products", searchQuery],
@@ -51,22 +66,20 @@ export default function Shop() {
     queryKey: ["/api/categories"],
   });
 
-  const fallback = [
-    { labelEn: "Dresses", labelAr: "فساتين" },
-    { labelEn: "Outerwear", labelAr: "ملابس خارجية" },
-    { labelEn: "Accessories", labelAr: "إكسسوارات" },
-    { labelEn: "Sets", labelAr: "أطقم" },
-    { labelEn: "Tops", labelAr: "قمصان" },
-  ];
-
   const categoryOptions = [
     { label: isRtl ? "الكل" : "All", value: "All" },
-    ...(apiCategories.length
-      ? apiCategories
-          .filter((c: any) => c.isActive !== false)
-          .map((c) => ({ label: isRtl ? c.nameAr : c.name, value: c.name }))
-      : fallback.map((c) => ({ label: isRtl ? c.labelAr : c.labelEn, value: c.labelEn }))),
+    ...apiCategories
+      .filter((c: any) => c.isActive !== false)
+      .map((c) => ({ label: isRtl ? c.nameAr : c.name, value: c.name })),
   ];
+
+  const filteredProducts = useMemo(() => {
+    const list = products.filter((p) => filter === "All" || (p.category && p.category.toLowerCase() === filter.toLowerCase()));
+    if (sortBy === "price-asc") return [...list].sort((a, b) => a.price - b.price);
+    if (sortBy === "price-desc") return [...list].sort((a, b) => b.price - a.price);
+    if (sortBy === "newest") return [...list].sort((a, b) => (b.id ?? 0) - (a.id ?? 0));
+    return list;
+  }, [products, filter, sortBy]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -121,10 +134,9 @@ export default function Shop() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-48 rounded-none">
-                <DropdownMenuItem>Newest Arrivals</DropdownMenuItem>
-                <DropdownMenuItem>Price: Low to High</DropdownMenuItem>
-                <DropdownMenuItem>Price: High to Low</DropdownMenuItem>
-                <DropdownMenuItem>Best Sellers</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("newest")}>Newest Arrivals</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("price-asc")}>Price: Low to High</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("price-desc")}>Price: High to Low</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             </div>
@@ -134,13 +146,11 @@ export default function Shop() {
 
       <div className="container mx-auto px-6 py-12 flex-1">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12">
-          {products
-            .filter(p => filter === "All" || p.category === filter)
-            .map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+          {filteredProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
         </div>
-        {products.filter(p => filter === "All" || p.category === filter).length === 0 && (
+        {filteredProducts.length === 0 && (
           <p className="text-center text-muted-foreground py-12">{t.search_no_results}</p>
         )}
       </div>

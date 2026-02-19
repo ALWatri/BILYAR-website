@@ -61,16 +61,20 @@ export function ProductCard({ product }: ProductCardProps) {
             {translations[lang].product.out_of_stock}
           </span>
         )}
-        <Button
-          size="icon"
-          className={cn(
-            "absolute bottom-4 rounded-full bg-white text-black hover:bg-primary hover:text-white opacity-0 translate-y-4 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 shadow-lg",
-            isRtl ? "left-4" : "right-4"
-          )}
-        >
-          <Plus className="h-5 w-5" />
-          <span className="sr-only">Add to cart</span>
-        </Button>
+        {!(product as Product & { outOfStock?: boolean }).outOfStock && (
+          <Link href={`/product/${product.id}`}>
+            <Button
+              size="icon"
+              className={cn(
+                "absolute bottom-4 rounded-full bg-white text-black hover:bg-primary hover:text-white opacity-0 translate-y-4 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 shadow-lg",
+                isRtl ? "left-4" : "right-4"
+              )}
+            >
+              <Plus className="h-5 w-5" />
+              <span className="sr-only">Add to cart</span>
+            </Button>
+          </Link>
+        )}
       </div>
       <div className="mt-4 flex justify-between items-start">
         <div className={isRtl ? "text-right" : "text-left"}>

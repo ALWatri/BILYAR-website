@@ -116,6 +116,7 @@ export async function registerRoutes(
     hasShirt: z.boolean().optional().default(false),
     hasTrouser: z.boolean().optional().default(false),
     sku: z.string().optional().nullable(),
+    stockBySize: z.record(z.string(), z.number()).optional().nullable(),
     outOfStock: z.boolean().optional().default(false),
   });
 
@@ -289,7 +290,7 @@ export async function registerRoutes(
       measurements: z.record(z.string()).optional(),
       notes: z.string().optional(),
     })).min(1),
-    paymentMethod: z.enum(["myfatoorah", "deema"]),
+    paymentMethod: z.enum(["myfatoorah", "deema", "manual"]).optional().default("myfatoorah"),
   });
 
   app.post("/api/orders", async (req, res) => {
@@ -317,17 +318,26 @@ export async function registerRoutes(
       const defaultCost = s?.defaultShippingCost ?? 5;
       const shippingCost = subtotal >= threshold ? 0 : defaultCost;
       const total = subtotal + shippingCost;
+      const isManual = data.paymentMethod === "manual";
 
-      const [customerNameEn, customerAddressEn, customerCityEn, customerCountryEn] = await Promise.all([
-        translateToEnglish(data.customer.name),
-        translateToEnglish(data.customer.address),
-        translateToEnglish(data.customer.city),
-        translateToEnglish(data.customer.country),
-      ]);
+      let customerNameEn: string, customerAddressEn: string, customerCityEn: string, customerCountryEn: string;
+      if (isManual) {
+        customerNameEn = data.customer.name;
+        customerAddressEn = data.customer.address;
+        customerCityEn = data.customer.city;
+        customerCountryEn = data.customer.country;
+      } else {
+        [customerNameEn, customerAddressEn, customerCityEn, customerCountryEn] = await Promise.all([
+          translateToEnglish(data.customer.name),
+          translateToEnglish(data.customer.address),
+          translateToEnglish(data.customer.city),
+          translateToEnglish(data.customer.country),
+        ]);
+      }
 
       const itemsWithNotesEn = await Promise.all(
         data.items.map(async (item) => {
-          const notesEn = item.notes ? await translateToEnglish(item.notes) : null;
+          const notesEn = !isManual && item.notes ? await translateToEnglish(item.notes) : null;
           const p = productsById.get(item.productId)!;
           return {
             orderId: 0,
@@ -357,8 +367,8 @@ export async function registerRoutes(
           customerCityEn: customerCityEn !== data.customer.city ? customerCityEn : null,
           customerCountryEn: customerCountryEn !== data.customer.country ? customerCountryEn : null,
           status: "Pending",
-          paymentMethod: data.paymentMethod,
-          paymentStatus: "pending",
+          paymentMethod: data.paymentMethod ?? "myfatoorah",
+          paymentStatus: isManual ? "manual" : "pending",
           total,
           shippingCost,
         },
@@ -374,6 +384,14 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/orders/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
+    const deleted = await storage.deleteOrder(id);
+    if (!deleted) return res.status(404).json({ message: "Order not found" });
+    res.status(204).send();
+  });
+
   app.patch("/api/orders/:id/status", async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
@@ -386,10 +404,106 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  const updateOrderSchema = z.object({
+    customer: z.object({
+      name: z.string().min(1).optional(),
+      email: z.string().optional(),
+      phone: z.string().min(1).optional(),
+      address: z.string().min(1).optional(),
+      city: z.string().min(1).optional(),
+      country: z.string().min(1).optional(),
+    }).optional(),
+    status: z.enum(["Pending", "Paid", "Processing", "Shipped", "Delivered", "Unfinished", "Cancelled"]).optional(),
+    items: z.array(z.object({
+      productId: z.number(),
+      productName: z.string(),
+      quantity: z.number().min(1),
+      price: z.number(),
+      image: z.string(),
+      size: z.string().optional().nullable(),
+      measurements: z.record(z.string()).optional().nullable(),
+      notes: z.string().optional().nullable(),
+      notesEn: z.string().optional().nullable(),
+    })).optional(),
+  });
+
+  app.patch("/api/orders/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
+    try {
+      const data = updateOrderSchema.parse(req.body);
+      const existing = await storage.getOrder(id);
+      if (!existing) return res.status(404).json({ message: "Order not found" });
+
+      const orderData: Record<string, unknown> = {};
+      if (data.customer) {
+        if (data.customer.name != null) {
+          orderData.customerName = data.customer.name;
+          orderData.customerNameEn = data.customer.name;
+        }
+        if (data.customer.email != null) orderData.customerEmail = data.customer.email;
+        if (data.customer.phone != null) orderData.customerPhone = data.customer.phone;
+        if (data.customer.address != null) {
+          orderData.customerAddress = data.customer.address;
+          orderData.customerAddressEn = data.customer.address;
+        }
+        if (data.customer.city != null) {
+          orderData.customerCity = data.customer.city;
+          orderData.customerCityEn = data.customer.city;
+        }
+        if (data.customer.country != null) {
+          orderData.customerCountry = data.customer.country;
+          orderData.customerCountryEn = data.customer.country;
+        }
+      }
+      if (data.status != null) orderData.status = data.status;
+
+      let itemsData: { productId: number; productName: string; quantity: number; price: number; image: string; size?: string | null; measurements?: Record<string, string> | null; notes?: string | null; notesEn?: string | null }[] | undefined;
+      if (data.items && data.items.length > 0) {
+        const subtotal = data.items.reduce((acc, i) => acc + i.price * i.quantity, 0);
+        const s = await storage.getSettings();
+        const threshold = s?.freeShippingThreshold ?? 90;
+        const defaultCost = s?.defaultShippingCost ?? 5;
+        const shippingCost = subtotal >= threshold ? 0 : defaultCost;
+        const total = subtotal + shippingCost;
+        orderData.shippingCost = shippingCost;
+        orderData.total = total;
+        itemsData = data.items.map((i) => ({
+          productId: i.productId,
+          productName: i.productName,
+          quantity: i.quantity,
+          price: i.price,
+          image: i.image,
+          size: i.size ?? null,
+          measurements: i.measurements ?? null,
+          notes: i.notes ?? null,
+          notesEn: i.notesEn ?? null,
+        }));
+      }
+
+      const updated = await storage.updateOrder(id, orderData as any, itemsData);
+      if (!updated) return res.status(404).json({ message: "Order not found" });
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      throw error;
+    }
+  });
+
   // ===== CUSTOMERS (derived from orders) =====
+  function getCustomerKey(order: { customerEmail?: string | null; customerPhone?: string; customerName?: string }) {
+    const email = (order.customerEmail || "").trim().toLowerCase();
+    const phone = (order.customerPhone || "").trim();
+    const name = (order.customerName || "").trim();
+    return email ? email : `${phone}|${name}`;
+  }
+
   app.get("/api/customers", async (_req, res) => {
     const orders = await storage.getOrders();
     const customerMap = new Map<string, {
+      id: string;
       email: string;
       name: string;
       phone: string;
@@ -400,10 +514,7 @@ export async function registerRoutes(
     }>();
 
     for (const order of orders) {
-      const email = (order.customerEmail || "").trim().toLowerCase();
-      const phone = (order.customerPhone || "").trim();
-      const name = (order.customerName || "").trim();
-      const key = email ? email : `${phone}|${name}`;
+      const key = getCustomerKey(order);
       const existing = customerMap.get(key);
       if (existing) {
         existing.totalOrders += 1;
@@ -416,6 +527,7 @@ export async function registerRoutes(
         existing.orders.push(order);
       } else {
         customerMap.set(key, {
+          id: key,
           email: order.customerEmail,
           name: order.customerName,
           phone: order.customerPhone,
@@ -430,6 +542,41 @@ export async function registerRoutes(
     const customers = Array.from(customerMap.values())
       .sort((a, b) => b.totalSpent - a.totalSpent);
     res.json(customers);
+  });
+
+  const updateCustomerSchema = z.object({
+    id: z.string().min(1),
+    name: z.string().min(1).optional(),
+    phone: z.string().min(1).optional(),
+  });
+
+  app.patch("/api/customers", async (req, res) => {
+    try {
+      const { id, name, phone } = updateCustomerSchema.parse(req.body);
+      const orders = await storage.getOrders();
+      const toUpdate = orders.filter((o) => getCustomerKey(o) === id);
+      if (toUpdate.length === 0) return res.status(404).json({ message: "Customer not found" });
+      for (const order of toUpdate) {
+        const data: Record<string, string> = {};
+        if (name != null) data.customerName = data.customerNameEn = name;
+        if (phone != null) data.customerPhone = phone;
+        if (Object.keys(data).length > 0) await storage.updateOrder(order.id, data);
+      }
+      res.json({ updated: toUpdate.length });
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Validation error", errors: error.errors });
+      throw error;
+    }
+  });
+
+  app.delete("/api/customers", async (req, res) => {
+    const id = typeof req.body?.id === "string" ? req.body.id : typeof req.query?.id === "string" ? req.query.id : undefined;
+    if (!id) return res.status(400).json({ message: "Customer id required" });
+    const orders = await storage.getOrders();
+    const toDelete = orders.filter((o) => getCustomerKey(o) === id);
+    if (toDelete.length === 0) return res.status(404).json({ message: "Customer not found" });
+    for (const order of toDelete) await storage.deleteOrder(order.id);
+    res.json({ deleted: toDelete.length });
   });
 
   // ===== SETTINGS =====

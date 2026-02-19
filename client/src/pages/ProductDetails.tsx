@@ -67,10 +67,12 @@ export default function ProductDetails() {
   const isRtl = lang === "ar";
   const name = isRtl ? product.nameAr : product.name;
   const description = isRtl ? product.descriptionAr : product.description;
-  const sku = (product as Product & { sku?: string | null }).sku;
-  const showSizes = sku != null && String(sku).trim() !== "" && String(sku) !== "0";
+  const stockBySize = (product as Product & { stockBySize?: Record<string, number> | null }).stockBySize;
+  const sizesWithStock = stockBySize && typeof stockBySize === "object"
+    ? Object.entries(stockBySize).filter(([, q]) => Number(q) > 0).map(([s]) => s)
+    : [];
+  const showSizes = sizesWithStock.length > 0;
   const outOfStock = (product as Product & { outOfStock?: boolean }).outOfStock ?? false;
-  const SIZES = ["XS", "S", "M", "L", "XL", "2XL"];
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -107,7 +109,7 @@ export default function ProductDetails() {
                   <button className="text-sm text-muted-foreground underline">{t.guide}</button>
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {SIZES.map((size) => (
+                  {sizesWithStock.map((size) => (
                     <button
                       key={size}
                       type="button"
