@@ -17,41 +17,27 @@ export function HomeVideoGrid({ videos }: HomeVideoGridProps) {
   return (
     <section className="w-full bg-black">
       <div className="grid grid-cols-2 md:grid-cols-4 grid-rows-[auto] gap-1 md:gap-2 grid-auto-flow-dense auto-rows-[minmax(120px,180px)] md:auto-rows-[minmax(180px,280px)]">
-        {videos.map((v, i) =>
-          v.type === "image" ? (
-            <ImageTile key={i} video={v} />
-          ) : (
-            <VideoTile key={i} video={v} />
-          )
-        )}
+        {videos.map((v, i) => (
+          <VideoTile key={i} video={v} index={i} />
+        ))}
       </div>
     </section>
   );
 }
 
-function ImageTile({ video }: { video: HomeVideo }) {
-  const sizeClass = SIZE_CLASSES[video.size ?? "normal"];
-  return (
-    <div
-      className={cn(
-        "relative overflow-hidden bg-primary min-h-[120px] md:min-h-[180px] flex items-center justify-center p-4",
-        sizeClass
-      )}
-    >
-      <img
-        src={video.src}
-        alt="BILYAR"
-        className="max-w-full max-h-full object-contain"
-      />
-    </div>
-  );
-}
-
-function VideoTile({ video }: { video: HomeVideo }) {
+function VideoTile({ video, index }: { video: HomeVideo; index: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const loadedRef = useRef(false);
 
+  // Set src on mount so video loads immediately (avoids black tiles from lazy-src)
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (videoEl && video.src) {
+      videoEl.src = video.src;
+    }
+  }, [video.src]);
+
+  // Only play when in viewport; pause when scrolled away
   useEffect(() => {
     const container = containerRef.current;
     const videoEl = videoRef.current;
@@ -64,19 +50,13 @@ function VideoTile({ video }: { video: HomeVideo }) {
           videoEl.pause();
           return;
         }
-        // When in view: load src if not yet loaded, then play
-        if (!loadedRef.current) {
-          loadedRef.current = true;
-          videoEl.src = video.src;
-          videoEl.load();
-        }
         videoEl.play().catch(() => {});
       },
       { rootMargin: "50px", threshold: 0.1 }
     );
     observer.observe(container);
     return () => observer.disconnect();
-  }, [video.src]);
+  }, []);
 
   const sizeClass = SIZE_CLASSES[video.size ?? "normal"];
 
@@ -94,9 +74,10 @@ function VideoTile({ video }: { video: HomeVideo }) {
         muted
         playsInline
         loop
-        preload="none"
+        preload="metadata"
         poster={video.poster}
         aria-hidden
+        onError={() => console.warn(`Home video ${index + 1} failed to load: ${video.src}`)}
       />
     </div>
   );

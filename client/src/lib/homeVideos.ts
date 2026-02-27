@@ -13,17 +13,15 @@ export interface HomeVideo {
   poster?: string; // Optional thumbnail – improves perceived load speed
   /** Grid span for varied layout: "large" | "tall" | "wide" | "normal" */
   size?: "large" | "tall" | "wide" | "normal";
-  /** Use "image" for static images (e.g. logo) instead of video */
-  type?: "video" | "image";
 }
 
 export const HOME_VIDEOS: HomeVideo[] = [
   { src: "/videos/V1.mp4", size: "large" },
   { src: "/videos/V2.mp4", size: "tall" },
-  { src: "/images/logo-official.png", size: "normal", type: "image" },
+  { src: "/videos/V3.mp4", size: "normal" },
   { src: "/videos/V4.mp4", size: "wide" },
   { src: "/videos/V5.mp4", size: "normal" },
-  { src: "/images/logo-official.png", size: "normal", type: "image" },
+  { src: "/videos/V6.mp4", size: "normal" },
   { src: "/videos/V7.mp4", size: "tall" },
   { src: "/videos/V8.mp4", size: "normal" },
   { src: "/videos/V9.mp4", size: "wide" },
