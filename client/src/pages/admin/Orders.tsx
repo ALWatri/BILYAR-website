@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, Printer, Truck, FileDown, Trash2, Pencil, Save, X, Plus } from "lucide-react";
+import { Eye, Printer, Truck, FileDown, Trash2, Pencil, Save, X, Plus, Scissors } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { translations } from "@/lib/translations";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -257,6 +257,54 @@ export default function Orders() {
     setTimeout(() => { win.print(); win.close(); }, 250);
   };
 
+  const printTailorSlip = (order: OrderWithItems) => {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    const itemsHtml = order.items.map((i) => {
+      const measurements = i.measurements && typeof i.measurements === "object" ? Object.entries(i.measurements as Record<string, string>).map(([k, v]) => `<tr><td>${k}</td><td>${String(v)}</td></tr>`).join("") : "";
+      const measurementsTable = measurements ? `<table class="meas"><thead><tr><th>Measurement</th><th>Value (inch)</th></tr></thead><tbody>${measurements}</tbody></table>` : "";
+      const notesEn = (i as { notesEn?: string | null }).notesEn || i.notes || "";
+      const notesBlock = notesEn ? `<p class="notes"><strong>Notes:</strong> ${notesEn}</p>` : "";
+      return `
+        <div class="piece">
+          <div class="piece-row">
+            <img src="${i.image}" alt="${i.productName}" />
+            <div class="piece-info">
+              <p class="piece-name">${i.productName}</p>
+              <p><strong>Qty:</strong> ${i.quantity} | <strong>Size:</strong> ${i.size || "—"}</p>
+              ${notesBlock}
+              ${measurementsTable}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+    win.document.write(`
+      <!DOCTYPE html><html><head><title>Tailor Slip ${order.orderNumber}</title>
+      <style>
+        body{font-family:sans-serif;padding:24px;max-width:600px;margin:0 auto}
+        h1{font-size:1.25rem;margin-bottom:8px}
+        .meta{color:#666;margin-bottom:16px}
+        .piece{border:1px solid #ddd;margin-bottom:20px;padding:16px;page-break-inside:avoid}
+        .piece-row{display:flex;gap:16px}
+        .piece img{width:100px;height:120px;object-fit:cover;flex-shrink:0}
+        .piece-info{flex:1}
+        .piece-name{font-weight:bold;margin:0 0 8px 0}
+        .meas{width:100%;border-collapse:collapse;margin-top:12px}
+        .meas th,.meas td{border:1px solid #ddd;padding:6px 8px;text-align:left}
+        .meas th{background:#f5f5f5}
+        .notes{margin-top:8px;font-size:14px}
+      </style></head><body>
+      <h1>TAILOR SLIP - ${order.orderNumber}</h1>
+      <div class="meta">${order.createdAt} | Customer: ${forDriver(order).name}</div>
+      ${itemsHtml}
+      </body></html>
+    `);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 250);
+  };
+
   const exportReport = () => {
     const rows = orders.map((o) => ({
       orderNumber: o.orderNumber,
@@ -479,6 +527,9 @@ export default function Orders() {
                           </Button>
                           <Button variant="outline" onClick={() => printDeliverySlip(order)} className="gap-2">
                             <Truck className="h-4 w-4" /> Delivery Slip
+                          </Button>
+                          <Button variant="outline" onClick={() => printTailorSlip(order)} className="gap-2">
+                            <Scissors className="h-4 w-4" /> Tailor Slip
                           </Button>
                         </div>
                         <Button

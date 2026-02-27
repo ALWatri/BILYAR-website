@@ -636,23 +636,23 @@ export async function registerRoutes(
     }
   });
 
-  // ===== WHATSAPP =====
+  // ===== WHATSAPP (Twilio) =====
   const SITE_URL = process.env.SITE_URL || "";
-  const WHATSAPP_TEMPLATE_ORDER_RECEIVED = process.env.WHATSAPP_TEMPLATE_ORDER_RECEIVED || "order_received";
-  const WHATSAPP_TEMPLATE_ORDER_SHIPPED = process.env.WHATSAPP_TEMPLATE_ORDER_SHIPPED || "order_shipped";
-  const WHATSAPP_TEMPLATE_MARKETING = process.env.WHATSAPP_TEMPLATE_MARKETING || "marketing_message";
+  const TWILIO_CONTENT_ORDER_RECEIVED = process.env.TWILIO_CONTENT_ORDER_RECEIVED || "";
+  const TWILIO_CONTENT_ORDER_SHIPPED = process.env.TWILIO_CONTENT_ORDER_SHIPPED || "";
+  const TWILIO_CONTENT_MARKETING = process.env.TWILIO_CONTENT_MARKETING || "";
 
   async function sendOrderReceivedWhatsApp(orderId: number, baseUrl: string) {
-    if (!isWhatsAppConfigured()) return;
+    if (!isWhatsAppConfigured() || !TWILIO_CONTENT_ORDER_RECEIVED) return;
     const order = await storage.getOrder(orderId);
     if (!order || !order.customerPhone) return;
     const name = (order as any).customerNameEn || order.customerName;
+    const firstName = name.split(" ")[0] || name;
     const invoiceUrl = `${baseUrl}/api/orders/${orderId}/invoice-pdf`;
     const templateRes = await sendTemplate(
       order.customerPhone,
-      WHATSAPP_TEMPLATE_ORDER_RECEIVED,
-      "en",
-      [name.split(" ")[0] || name, order.orderNumber]
+      TWILIO_CONTENT_ORDER_RECEIVED,
+      { "1": firstName, "2": order.orderNumber }
     );
     if (!templateRes.ok) {
       console.error("WhatsApp order_received template:", templateRes.error);
@@ -663,37 +663,38 @@ export async function registerRoutes(
   }
 
   async function sendOrderShippedWhatsApp(orderId: number) {
-    if (!isWhatsAppConfigured()) return;
+    if (!isWhatsAppConfigured() || !TWILIO_CONTENT_ORDER_SHIPPED) return;
     const order = await storage.getOrder(orderId);
     if (!order || !order.customerPhone) return;
     const name = (order as any).customerNameEn || order.customerName;
+    const firstName = name.split(" ")[0] || name;
     await sendTemplate(
       order.customerPhone,
-      WHATSAPP_TEMPLATE_ORDER_SHIPPED,
-      "en",
-      [name.split(" ")[0] || name, order.orderNumber]
+      TWILIO_CONTENT_ORDER_SHIPPED,
+      { "1": firstName, "2": order.orderNumber }
     );
   }
 
   app.get("/api/whatsapp/status", (_req, res) => {
     res.json({
       configured: isWhatsAppConfigured(),
-      templates: {
-        orderReceived: WHATSAPP_TEMPLATE_ORDER_RECEIVED,
-        orderShipped: WHATSAPP_TEMPLATE_ORDER_SHIPPED,
-        marketing: WHATSAPP_TEMPLATE_MARKETING,
+      contentSids: {
+        orderReceived: TWILIO_CONTENT_ORDER_RECEIVED || "(not set)",
+        orderShipped: TWILIO_CONTENT_ORDER_SHIPPED || "(not set)",
+        marketing: TWILIO_CONTENT_MARKETING || "(not set)",
       },
     });
   });
 
   app.post("/api/whatsapp/send-marketing", async (req, res) => {
     if (!isWhatsAppConfigured()) return res.status(503).json({ message: "WhatsApp not configured" });
+    if (!TWILIO_CONTENT_MARKETING) return res.status(503).json({ message: "TWILIO_CONTENT_MARKETING not set" });
     const schema = z.object({ phones: z.array(z.string()).min(1), message: z.string().min(1) });
     try {
       const { phones, message } = schema.parse(req.body);
       const results: { phone: string; ok: boolean; error?: string }[] = [];
       for (const phone of phones) {
-        const r = await sendTemplate(phone, WHATSAPP_TEMPLATE_MARKETING, "en", [message]);
+        const r = await sendTemplate(phone, TWILIO_CONTENT_MARKETING, { "1": message });
         results.push({ phone, ok: r.ok, error: r.error });
       }
       res.json({ results });

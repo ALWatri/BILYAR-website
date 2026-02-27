@@ -2,6 +2,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/ui/ProductCard";
+import { HomeVideoGrid } from "@/components/HomeVideoGrid";
 import type { Product } from "@/lib/data";
 import { ArrowRight, Star } from "lucide-react";
 import { Link } from "wouter";
@@ -10,6 +11,7 @@ import { translations } from "@/lib/translations";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
+import { HOME_VIDEOS } from "@/lib/homeVideos";
 
 export default function Home() {
   const [lang, setLang] = useState<"en" | "ar">("en");
@@ -80,6 +82,10 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
+
+      {HOME_VIDEOS.length > 0 && (
+        <HomeVideoGrid videos={HOME_VIDEOS} />
+      )}
 
       <section id="collections" className="py-24 bg-secondary/30 scroll-mt-20">
         <div className="container mx-auto px-6">

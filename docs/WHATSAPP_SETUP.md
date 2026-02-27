@@ -1,67 +1,70 @@
-# WhatsApp Business API Setup
+# WhatsApp via Twilio Setup
 
-This guide helps you configure WhatsApp Cloud API for BILYAR order notifications and marketing.
+BILYAR uses **Twilio** as the WhatsApp Business Solution Provider (BSP). Twilio handles Meta/WhatsApp complexity and provides a simple API.
 
-## 1. Create Meta Developer Account
+## 1. Create Twilio Account
 
-1. Go to [developers.facebook.com](https://developers.facebook.com)
-2. Sign in with your Facebook account
-3. Create a Developer account if prompted
+1. Go to [twilio.com](https://www.twilio.com) and sign up
+2. Verify your email and phone
+3. In the [Console](https://console.twilio.com), note your **Account SID** and **Auth Token**
 
-## 2. Create a WhatsApp App
+## 2. Enable WhatsApp
 
-1. Click **Create App** → **Business**
-2. Fill in app name (e.g. "BILYAR") and contact email
-3. Add **WhatsApp** product to your app
-4. In WhatsApp → **API Setup**, you'll see:
-   - **Phone number ID** (save this as `WHATSAPP_PHONE_NUMBER_ID`)
-   - **Temporary access token** (for testing; replace with System User token for production)
+**Option A: Sandbox (for testing)**
+- Go to [WhatsApp Sandbox](https://console.twilio.com/us1/develop/sms/whatsapp/learn)
+- Join the sandbox by sending the code to the Twilio number
+- Use `TWILIO_WHATSAPP_FROM=whatsapp:+14155238886` (sandbox number)
 
-## 3. Get Permanent Access Token
+**Option B: Production**
+- Request WhatsApp Business API access in Twilio Console
+- Add your business phone number or use a Twilio number with WhatsApp
+- Set `TWILIO_WHATSAPP_FROM=whatsapp:+965XXXXXXXX` or use a [Messaging Service](https://www.twilio.com/docs/messaging/services)
 
-1. In Meta Business Suite: [business.facebook.com](https://business.facebook.com)
-2. Go to **Business Settings** → **Users** → **System Users**
-3. Create a System User, add it to your app
-4. Generate token with `whatsapp_business_messaging` and `whatsapp_business_management` permissions
-5. Save as `WHATSAPP_ACCESS_TOKEN`
+## 3. Create Content Templates
 
-## 4. Create Message Templates
+Templates must be approved by WhatsApp before use. Create them in Twilio:
 
-Templates must be created and approved in Meta Business Manager before use.
+1. Go to [Content Template Builder](https://console.twilio.com/us1/develop/sms/content-template-builder)
+2. Create three templates:
 
-### order_received
-- **Category:** Utility
-- **Name:** `order_received`
+### order_received (Utility)
 - **Body:** `Hello {{1}}, your order {{2}} has been received. Your invoice is attached.`
-- **Parameters:** 2 (customer first name, order number)
-
-### order_shipped
+- **Variables:** 1 = customer first name, 2 = order number
 - **Category:** Utility
-- **Name:** `order_shipped`
+
+### order_shipped (Utility)
 - **Body:** `Hello {{1}}, your order {{2}} is out for delivery!`
+- **Variables:** 1 = first name, 2 = order number
+- **Category:** Utility
 
-### marketing_message
-- **Category:** Marketing
-- **Name:** `marketing_message`
+### marketing_message (Marketing)
 - **Body:** `{{1}}`
-- **Parameters:** 1 (your custom message)
+- **Variables:** 1 = your custom message
+- **Category:** Marketing
 
-Submit templates for approval (usually 24–48 hours).
+3. Submit each for WhatsApp approval (usually minutes)
+4. Copy the **Content SID** (starts with `HX`) for each template
 
-## 5. Environment Variables
+## 4. Environment Variables
 
-Add to Render (or your `.env`):
+Add to Render or `.env`:
 
 ```
-WHATSAPP_ACCESS_TOKEN=EAAxxxxx
-WHATSAPP_PHONE_NUMBER_ID=123456789
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_WHATSAPP_FROM=whatsapp:+96512345678
+# Or for production with Messaging Service:
+# TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+TWILIO_CONTENT_ORDER_RECEIVED=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_CONTENT_ORDER_SHIPPED=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_CONTENT_MARKETING=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
 SITE_URL=https://your-app.onrender.com
 ```
 
-`SITE_URL` is required for the invoice PDF link in order-received messages.
-
-## 6. Test
+## 5. Test
 
 - Use the admin **WhatsApp** page to send a test marketing message
-- Place a test order and complete payment to trigger order received
-- Set an order status to **Shipped** to trigger order shipped
+- Place a test order → order received + invoice PDF
+- Set order status to **Shipped** → order shipped notification

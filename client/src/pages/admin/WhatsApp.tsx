@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils";
 
 interface WhatsAppStatus {
   configured: boolean;
-  templates: { orderReceived: string; orderShipped: string; marketing: string };
+  contentSids?: { orderReceived: string; orderShipped: string; marketing: string };
+  templates?: { orderReceived: string; orderShipped: string; marketing: string };
 }
 
 interface Customer {
@@ -145,18 +146,15 @@ export default function WhatsApp() {
           <div>
             <h3 className="font-semibold text-amber-900 mb-1">WhatsApp not configured</h3>
             <p className="text-sm text-amber-800 mb-3">
-              Add WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID to your environment variables. Create templates in Meta Business Manager:{" "}
-              <code className="bg-amber-100 px-1">{(status.templates as { orderReceived?: string })?.orderReceived || "order_received"}</code>,{" "}
-              <code className="bg-amber-100 px-1">{(status.templates as { orderShipped?: string })?.orderShipped || "order_shipped"}</code>,{" "}
-              <code className="bg-amber-100 px-1">{(status.templates as { marketing?: string })?.marketing || "marketing_message"}</code>.
+              Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM (or TWILIO_MESSAGING_SERVICE_SID). Create Content Templates in Twilio Console and set TWILIO_CONTENT_ORDER_RECEIVED, TWILIO_CONTENT_ORDER_SHIPPED, TWILIO_CONTENT_MARKETING.
             </p>
             <a
-              href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started"
+              href="https://www.twilio.com/docs/whatsapp/quickstart"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm font-medium text-amber-700 hover:underline"
             >
-              Setup guide →
+              Twilio WhatsApp setup →
             </a>
           </div>
         </div>
@@ -219,7 +217,7 @@ export default function WhatsApp() {
               <Send className="h-5 w-5" /> Marketing (manual)
             </h2>
             <p className="text-sm text-gray-500 mb-4">
-              Send a marketing message to selected customers. Uses the <code className="bg-gray-100 px-1">{(status.templates as { marketing?: string })?.marketing || "marketing_message"}</code> template with your message as the body parameter.
+              Send a marketing message to selected customers. Uses the marketing Content Template with your message as the body.
             </p>
             <div className="space-y-4">
               <div>
