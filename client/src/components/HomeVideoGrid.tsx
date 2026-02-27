@@ -17,11 +17,33 @@ export function HomeVideoGrid({ videos }: HomeVideoGridProps) {
   return (
     <section className="w-full bg-black">
       <div className="grid grid-cols-2 md:grid-cols-4 grid-rows-[auto] gap-1 md:gap-2 grid-auto-flow-dense auto-rows-[minmax(120px,180px)] md:auto-rows-[minmax(180px,280px)]">
-        {videos.map((v, i) => (
-          <VideoTile key={i} video={v} />
-        ))}
+        {videos.map((v, i) =>
+          v.type === "image" ? (
+            <ImageTile key={i} video={v} />
+          ) : (
+            <VideoTile key={i} video={v} />
+          )
+        )}
       </div>
     </section>
+  );
+}
+
+function ImageTile({ video }: { video: HomeVideo }) {
+  const sizeClass = SIZE_CLASSES[video.size ?? "normal"];
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden bg-primary min-h-[120px] md:min-h-[180px] flex items-center justify-center p-4",
+        sizeClass
+      )}
+    >
+      <img
+        src={video.src}
+        alt="BILYAR"
+        className="max-w-full max-h-full object-contain"
+      />
+    </div>
   );
 }
 
