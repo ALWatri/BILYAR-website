@@ -18,11 +18,11 @@ export interface HomeVideo {
 export const HOME_VIDEOS: HomeVideo[] = [
   { src: "/videos/V1.mp4", size: "large" },
   { src: "/videos/V2.mp4", size: "tall" },
-  { src: "/videos/V3.mp4", size: "normal" },
+  { src: "/videos/V3.mp4", size: "tall" },
   { src: "/videos/V4.mp4", size: "wide" },
   { src: "/videos/V5.mp4", size: "normal" },
   { src: "/videos/V6.mp4", size: "normal" },
   { src: "/videos/V7.mp4", size: "tall" },
-  { src: "/videos/V8.mp4", size: "normal" },
+  { src: "/videos/V8.mp4", size: "tall" },
   { src: "/videos/V9.mp4", size: "wide" },
 ];
