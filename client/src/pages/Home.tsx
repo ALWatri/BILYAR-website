@@ -41,8 +41,9 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      
-      <section className="relative h-screen w-full overflow-hidden">
+
+      {/* TESTING: Hero section commented out so videos appear at top */}
+      {/* <section className="relative h-screen w-full overflow-hidden">
         <div className="absolute inset-0 bg-black/30 z-10" />
         <img 
           src="/images/hero-main.png" 
@@ -81,7 +82,7 @@ export default function Home() {
             </Button>
           </motion.div>
         </div>
-      </section>
+      </section> */}
 
       {HOME_VIDEOS.length > 0 && (
         <HomeVideoGrid videos={HOME_VIDEOS} />
