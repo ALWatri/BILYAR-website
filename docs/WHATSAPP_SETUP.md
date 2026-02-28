@@ -4,11 +4,7 @@ BILYAR uses **Twilio** as the WhatsApp Business Solution Provider (BSP). Twilio 
 
 ## Order confirmation flow
 
-When a customer pays (MyFatoorah or Deema), they automatically receive:
-1. **WhatsApp message** – "Hello [name], your order [ORD-XXX] has been received. Your invoice is attached."
-2. **Invoice PDF** – Attached to the same WhatsApp thread
-
-Ensure `SITE_URL` is set so Twilio can fetch the invoice PDF (must be a public HTTPS URL).
+When a customer pays (MyFatoorah or Deema), they automatically receive a WhatsApp order confirmation message. (Invoice PDF is not sent via WhatsApp—customers can download it from the order confirmation page.)
 
 ---
 
@@ -38,7 +34,7 @@ Templates must be approved by WhatsApp before use. Create them in Twilio:
 2. Create three templates:
 
 ### order_received (Utility)
-- **Body:** `Hello {{1}}, your order {{2}} has been received. Your invoice is attached.`
+- **Body:** `Hello {{1}}, your order {{2}} has been received.`
 - **Variables:** 1 = customer first name, 2 = order number
 - **Category:** Utility
 
@@ -87,5 +83,5 @@ SITE_URL=https://your-app.onrender.com
 | Twilio account | Create at twilio.com |
 | WhatsApp sender | Set `TWILIO_WHATSAPP_FROM` or `TWILIO_MESSAGING_SERVICE_SID` |
 | Order received template | Create in Content Template Builder, set `TWILIO_CONTENT_ORDER_RECEIVED` |
-| Invoice URL | **Set `SITE_URL`** to your public URL (e.g. `https://bilyarofficial.com`) so Twilio can fetch the PDF |
+| SITE_URL | Optional; set for invoice PDF links if you add them later |
 | Sandbox testing | Customer must join Twilio sandbox (send code to Twilio number) before they can receive messages |

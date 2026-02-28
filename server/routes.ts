@@ -659,8 +659,6 @@ export async function registerRoutes(
     const name = (order as any).customerNameEn || order.customerName;
     const firstName = name.split(" ")[0] || name;
     // Prefer SITE_URL so Twilio can reliably fetch the invoice (needs public HTTPS URL)
-    const base = (SITE_URL && SITE_URL.startsWith("http")) ? SITE_URL.replace(/\/$/, "") : baseUrl.replace(/\/$/, "");
-    const invoiceUrl = `${base}/api/orders/${orderId}/invoice-pdf`;
     console.log(`WhatsApp: sending order_received to ${order.customerPhone} for order ${order.orderNumber}`);
     const templateRes = await sendTemplate(
       order.customerPhone,
@@ -671,13 +669,7 @@ export async function registerRoutes(
       console.error("WhatsApp order_received template:", templateRes.error);
       return;
     }
-    // Do not add caption - it triggers 63016 (freeform message outside 24h window). Template already says "invoice attached".
-    const docRes = await sendDocument(order.customerPhone, invoiceUrl, `invoice-${order.orderNumber}.pdf`);
-    if (!docRes.ok) {
-      console.error("WhatsApp invoice document:", docRes.error);
-    } else {
-      console.log(`WhatsApp: Order ${order.orderNumber} confirmation + invoice sent to ${order.customerPhone}`);
-    }
+    console.log(`WhatsApp: Order ${order.orderNumber} confirmation sent to ${order.customerPhone}`);
   }
 
   async function sendOrderShippedWhatsApp(orderId: number) {
