@@ -671,7 +671,8 @@ export async function registerRoutes(
       console.error("WhatsApp order_received template:", templateRes.error);
       return;
     }
-    const docRes = await sendDocument(order.customerPhone, invoiceUrl, `invoice-${order.orderNumber}.pdf`, `Invoice for order ${order.orderNumber}`);
+    // Do not add caption - it triggers 63016 (freeform message outside 24h window). Template already says "invoice attached".
+    const docRes = await sendDocument(order.customerPhone, invoiceUrl, `invoice-${order.orderNumber}.pdf`);
     if (!docRes.ok) {
       console.error("WhatsApp invoice document:", docRes.error);
     } else {
