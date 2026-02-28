@@ -643,12 +643,25 @@ export async function registerRoutes(
   const TWILIO_CONTENT_MARKETING = process.env.TWILIO_CONTENT_MARKETING || "";
 
   async function sendOrderReceivedWhatsApp(orderId: number, baseUrl: string) {
-    if (!isWhatsAppConfigured() || !TWILIO_CONTENT_ORDER_RECEIVED) return;
+    if (!isWhatsAppConfigured()) {
+      console.warn("WhatsApp skip: not configured (TWILIO_ACCOUNT_SID/AUTH_TOKEN missing)");
+      return;
+    }
+    if (!TWILIO_CONTENT_ORDER_RECEIVED) {
+      console.warn("WhatsApp skip: TWILIO_CONTENT_ORDER_RECEIVED not set");
+      return;
+    }
     const order = await storage.getOrder(orderId);
-    if (!order || !order.customerPhone) return;
+    if (!order || !order.customerPhone) {
+      console.warn("WhatsApp skip: order not found or no customerPhone", { orderId, hasOrder: !!order });
+      return;
+    }
     const name = (order as any).customerNameEn || order.customerName;
     const firstName = name.split(" ")[0] || name;
-    const invoiceUrl = `${baseUrl}/api/orders/${orderId}/invoice-pdf`;
+    // Prefer SITE_URL so Twilio can reliably fetch the invoice (needs public HTTPS URL)
+    const base = (SITE_URL && SITE_URL.startsWith("http")) ? SITE_URL.replace(/\/$/, "") : baseUrl.replace(/\/$/, "");
+    const invoiceUrl = `${base}/api/orders/${orderId}/invoice-pdf`;
+    console.log(`WhatsApp: sending order_received to ${order.customerPhone} for order ${order.orderNumber}`);
     const templateRes = await sendTemplate(
       order.customerPhone,
       TWILIO_CONTENT_ORDER_RECEIVED,
@@ -659,7 +672,11 @@ export async function registerRoutes(
       return;
     }
     const docRes = await sendDocument(order.customerPhone, invoiceUrl, `invoice-${order.orderNumber}.pdf`, `Invoice for order ${order.orderNumber}`);
-    if (!docRes.ok) console.error("WhatsApp invoice document:", docRes.error);
+    if (!docRes.ok) {
+      console.error("WhatsApp invoice document:", docRes.error);
+    } else {
+      console.log(`WhatsApp: Order ${order.orderNumber} confirmation + invoice sent to ${order.customerPhone}`);
+    }
   }
 
   async function sendOrderShippedWhatsApp(orderId: number) {
@@ -704,10 +721,22 @@ export async function registerRoutes(
     }
   });
 
+  async function resolveOrderId(input: string | number | undefined): Promise<number | null> {
+    if (input == null || input === "") return null;
+    const str = String(input).trim().toUpperCase();
+    if (str.startsWith("ORD-")) {
+      const orders = await storage.getOrders();
+      const found = orders.find(o => o.orderNumber.toUpperCase() === str || o.orderNumber.toUpperCase().startsWith(str));
+      return found ? found.id : null;
+    }
+    const id = parseInt(str, 10);
+    return isNaN(id) ? null : id;
+  }
+
   app.post("/api/whatsapp/send-order-received", async (req, res) => {
     if (!isWhatsAppConfigured()) return res.status(503).json({ message: "WhatsApp not configured" });
-    const id = parseInt(req.body?.orderId);
-    if (isNaN(id)) return res.status(400).json({ message: "orderId required" });
+    const id = await resolveOrderId(req.body?.orderId);
+    if (id == null) return res.status(400).json({ message: "orderId or order number (e.g. ORD-XXX) required" });
     const order = await storage.getOrder(id);
     if (!order) return res.status(404).json({ message: "Order not found" });
     const baseUrl = SITE_URL || getBaseUrl(req);
@@ -717,8 +746,8 @@ export async function registerRoutes(
 
   app.post("/api/whatsapp/send-order-shipped", async (req, res) => {
     if (!isWhatsAppConfigured()) return res.status(503).json({ message: "WhatsApp not configured" });
-    const id = parseInt(req.body?.orderId);
-    if (isNaN(id)) return res.status(400).json({ message: "orderId required" });
+    const id = await resolveOrderId(req.body?.orderId);
+    if (id == null) return res.status(400).json({ message: "orderId or order number (e.g. ORD-XXX) required" });
     const order = await storage.getOrder(id);
     if (!order) return res.status(404).json({ message: "Order not found" });
     await sendOrderShippedWhatsApp(id);

@@ -72,14 +72,22 @@ export default function WhatsApp() {
   });
 
   const sendOrderReceivedMutation = useMutation({
-    mutationFn: async (orderId: number) => {
+    mutationFn: async (orderIdOrNumber: string | number) => {
       const res = await fetch("/api/whatsapp/send-order-received", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({ orderId: String(orderIdOrNumber).trim() }),
         credentials: "include",
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = text;
+        try {
+          const err = JSON.parse(text);
+          if (err.message) msg = err.message;
+        } catch { /* ignore */ }
+        throw new Error(msg);
+      }
       return res.json();
     },
     onSuccess: () => toast({ title: "Order received notification sent" }),
@@ -87,14 +95,22 @@ export default function WhatsApp() {
   });
 
   const sendOrderShippedMutation = useMutation({
-    mutationFn: async (orderId: number) => {
+    mutationFn: async (orderIdOrNumber: string | number) => {
       const res = await fetch("/api/whatsapp/send-order-shipped", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({ orderId: String(orderIdOrNumber).trim() }),
         credentials: "include",
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = text;
+        try {
+          const err = JSON.parse(text);
+          if (err.message) msg = err.message;
+        } catch { /* ignore */ }
+        throw new Error(msg);
+      }
       return res.json();
     },
     onSuccess: () => toast({ title: "Order shipped notification sent" }),
@@ -194,19 +210,19 @@ export default function WhatsApp() {
             <p className="text-sm text-gray-500 mb-4">Resend order received or shipped notification for a specific order (e.g. for testing).</p>
             <div className="flex gap-4 items-end">
               <div>
-                <Label>Order ID</Label>
+                <Label>Order ID or number</Label>
                 <Input
-                  type="number"
-                  placeholder="e.g. 123"
+                  type="text"
+                  placeholder="e.g. 123 or ORD-MM5K6HKG"
                   value={testOrderId}
                   onChange={(e) => setTestOrderId(e.target.value)}
-                  className="w-32 rounded-none"
+                  className="w-48 rounded-none"
                 />
               </div>
-              <Button variant="outline" size="sm" onClick={() => sendOrderReceivedMutation.mutate(parseInt(testOrderId, 10))} disabled={!testOrderId || sendOrderReceivedMutation.isPending}>
+              <Button variant="outline" size="sm" onClick={() => sendOrderReceivedMutation.mutate(testOrderId)} disabled={!testOrderId.trim() || sendOrderReceivedMutation.isPending}>
                 Send order received
               </Button>
-              <Button variant="outline" size="sm" onClick={() => sendOrderShippedMutation.mutate(parseInt(testOrderId, 10))} disabled={!testOrderId || sendOrderShippedMutation.isPending}>
+              <Button variant="outline" size="sm" onClick={() => sendOrderShippedMutation.mutate(testOrderId)} disabled={!testOrderId.trim() || sendOrderShippedMutation.isPending}>
                 Send order shipped
               </Button>
             </div>
