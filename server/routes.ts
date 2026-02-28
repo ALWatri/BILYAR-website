@@ -659,11 +659,11 @@ export async function registerRoutes(
     const name = (order as any).customerNameEn || order.customerName;
     const firstName = name.split(" ")[0] || name;
     // Prefer SITE_URL so Twilio can reliably fetch the invoice (needs public HTTPS URL)
-    console.log(`WhatsApp: sending order_received to ${order.customerPhone} for order ${order.orderNumber}`);
+    console.log(`WhatsApp: sending order_received to ${order.customerPhone}`);
     const templateRes = await sendTemplate(
       order.customerPhone,
       TWILIO_CONTENT_ORDER_RECEIVED,
-      { "1": firstName, "2": order.orderNumber }
+      { first_name: firstName }
     );
     if (!templateRes.ok) {
       console.error("WhatsApp order_received template:", templateRes.error);

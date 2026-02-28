@@ -34,8 +34,8 @@ Templates must be approved by WhatsApp before use. Create them in Twilio:
 2. Create three templates:
 
 ### order_received (Utility)
-- **Body:** `Hello {{1}}, your order {{2}} has been received.`
-- **Variables:** 1 = customer first name, 2 = order number
+- **Body:** `Hi {{first_name}}, we are excited to have you here! You will get notifications of your order as we process them.`
+- **Variables:** first_name = customer first name
 - **Category:** Utility
 
 ### order_shipped (Utility)
