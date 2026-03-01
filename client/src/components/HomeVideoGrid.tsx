@@ -77,6 +77,10 @@ function VideoTile({ video, index }: { video: HomeVideo; index: number }) {
         preload="metadata"
         poster={video.poster}
         aria-hidden
+        onEnded={(e) => {
+          e.currentTarget.currentTime = 0;
+          e.currentTarget.play().catch(() => {});
+        }}
         onError={() => console.warn(`Home video ${index + 1} failed to load: ${video.src}`)}
       />
     </div>
