@@ -99,7 +99,8 @@ export default function Checkout() {
       }
 
       if (paymentData.paymentUrl) {
-        clearCart();
+        // Avoid a confusing "empty cart" flash before redirecting to the payment page.
+        // The order is already created, so it's safe to clear the cart after returning.
         window.location.href = paymentData.paymentUrl;
       } else {
         setError(paymentData.message || "Payment initiation failed");
