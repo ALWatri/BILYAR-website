@@ -10,6 +10,7 @@ import { translateToEnglish } from "./translate";
 import { generateInvoicePdf } from "./invoice-pdf";
 import { isWhatsAppConfigured, sendTemplate, sendDocument, sendText } from "./whatsapp";
 import { z } from "zod";
+import nodemailer from "nodemailer";
 
 const UPLOADS_DIR = path.join(process.env.UPLOADS_DIR || process.cwd(), "uploads");
 
@@ -39,10 +40,29 @@ const DEEMA_API_KEY = process.env.DEEMA_API_KEY || "";
 const DEEMA_WEBHOOK_HEADER = process.env.DEEMA_WEBHOOK_HEADER || "x-webhook-secret";
 const DEEMA_WEBHOOK_SECRET = process.env.DEEMA_WEBHOOK_SECRET ?? "bilyar-deema-webhook-2026";
 
+const CONTACT_TO = process.env.CONTACT_TO || "info@bilyarofficial.com";
+const CONTACT_FROM = process.env.CONTACT_FROM || process.env.SMTP_USER || "info@bilyarofficial.com";
+
 function getBaseUrl(req: any): string {
   const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host;
   return `${protocol}://${host}`;
+}
+
+function createMailTransport() {
+  const host = process.env.SMTP_HOST;
+  const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : undefined;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (!host || !port || !user || !pass) return null;
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+  });
 }
 
 export async function registerRoutes(
@@ -102,6 +122,49 @@ export async function registerRoutes(
     const product = await storage.getProduct(id);
     if (!product) return res.status(404).json({ message: "Product not found" });
     res.json(product);
+  });
+
+  // ===== CONTACT FORM =====
+  const contactSchema = z.object({
+    firstName: z.string().min(1).max(80),
+    lastName: z.string().min(1).max(80),
+    email: z.string().email().max(254),
+    message: z.string().min(1).max(5000),
+  });
+
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const data = contactSchema.parse(req.body);
+      const transport = createMailTransport();
+      if (!transport) {
+        return res.status(503).json({
+          message: "Email service is not configured",
+        });
+      }
+
+      const subject = `New contact form message — ${data.firstName} ${data.lastName}`;
+      const text =
+        `Name: ${data.firstName} ${data.lastName}\n` +
+        `Email: ${data.email}\n` +
+        `Sent from: ${getBaseUrl(req)}\n\n` +
+        `${data.message}\n`;
+
+      await transport.sendMail({
+        from: CONTACT_FROM,
+        to: CONTACT_TO,
+        replyTo: data.email,
+        subject,
+        text,
+      });
+
+      return res.json({ sent: true });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Contact form error:", error);
+      return res.status(500).json({ message: "Failed to send message" });
+    }
   });
 
   const insertProductSchema = z.object({

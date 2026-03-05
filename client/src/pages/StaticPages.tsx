@@ -45,6 +45,14 @@ export function About() {
 
 export function Contact() {
   const [lang, setLang] = useState<"en" | "ar">("en");
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    message: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [status, setStatus] = useState<null | "success" | "error">(null);
 
   useEffect(() => {
     const checkLang = () => {
@@ -60,6 +68,30 @@ export function Contact() {
   const t = translations[lang].static;
   const isRtl = lang === "ar";
 
+  const updateField = (field: keyof typeof form, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error("Request failed");
+      setStatus("success");
+      setForm({ firstName: "", lastName: "", email: "", message: "" });
+    } catch {
+      setStatus("error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
@@ -69,35 +101,70 @@ export function Contact() {
           <p className="text-center text-muted-foreground">
             {t.contact_desc}
           </p>
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={onSubmit}>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className={cn("text-xs uppercase tracking-widest font-bold block", isRtl ? "text-right" : "text-left")}>
                   {t.first_name}
                 </label>
-                <input className="w-full p-3 bg-secondary/20 border border-transparent focus:border-primary outline-none" />
+                <input
+                  value={form.firstName}
+                  onChange={(e) => updateField("firstName", e.target.value)}
+                  className="w-full p-3 bg-secondary/20 border border-transparent focus:border-primary outline-none"
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <label className={cn("text-xs uppercase tracking-widest font-bold block", isRtl ? "text-right" : "text-left")}>
                   {t.last_name}
                 </label>
-                <input className="w-full p-3 bg-secondary/20 border border-transparent focus:border-primary outline-none" />
+                <input
+                  value={form.lastName}
+                  onChange={(e) => updateField("lastName", e.target.value)}
+                  className="w-full p-3 bg-secondary/20 border border-transparent focus:border-primary outline-none"
+                  required
+                />
               </div>
             </div>
             <div className="space-y-2">
               <label className={cn("text-xs uppercase tracking-widest font-bold block", isRtl ? "text-right" : "text-left")}>
                 {t.email}
               </label>
-              <input type="email" className="w-full p-3 bg-secondary/20 border border-transparent focus:border-primary outline-none" />
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => updateField("email", e.target.value)}
+                className="w-full p-3 bg-secondary/20 border border-transparent focus:border-primary outline-none"
+                required
+              />
             </div>
             <div className="space-y-2">
               <label className={cn("text-xs uppercase tracking-widest font-bold block", isRtl ? "text-right" : "text-left")}>
                 {t.message}
               </label>
-              <textarea className="w-full p-3 bg-secondary/20 border border-transparent focus:border-primary outline-none h-32" />
+              <textarea
+                value={form.message}
+                onChange={(e) => updateField("message", e.target.value)}
+                className="w-full p-3 bg-secondary/20 border border-transparent focus:border-primary outline-none h-32"
+                required
+              />
             </div>
-            <button className="w-full bg-primary text-white py-4 uppercase tracking-widest hover:bg-primary/90 transition-colors">
-              {t.send}
+            {status === "success" && (
+              <div className="bg-green-50 text-green-800 p-3 border border-green-200">
+                {t.contact_sent}
+              </div>
+            )}
+            {status === "error" && (
+              <div className="bg-destructive/10 text-destructive p-3 border border-destructive/20">
+                {t.contact_failed}
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-primary text-white py-4 uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {isSubmitting ? t.sending : t.send}
             </button>
           </form>
         </div>

@@ -90,7 +90,10 @@ export const translations = {
       last_name: "Last Name",
       email: "Email",
       message: "Message",
-      send: "Send Message"
+      send: "Send Message",
+      sending: "Sending...",
+      contact_sent: "Message sent. We’ll get back to you soon.",
+      contact_failed: "Could not send your message. Please try again."
     },
     admin: {
       dashboard: "Dashboard",
@@ -335,7 +338,10 @@ export const translations = {
       last_name: "الاسم الأخير",
       email: "البريد الإلكتروني",
       message: "الرسالة",
-      send: "إرسال الرسالة"
+      send: "إرسال الرسالة",
+      sending: "جاري الإرسال...",
+      contact_sent: "تم إرسال الرسالة. سنعود إليك قريبًا.",
+      contact_failed: "تعذر إرسال الرسالة. يرجى المحاولة مرة أخرى."
     },
     admin: {
       dashboard: "لوحة التحكم",
