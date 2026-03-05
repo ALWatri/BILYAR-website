@@ -87,8 +87,8 @@ export default function Home() {
         <HomeVideoGrid videos={HOME_VIDEOS} />
       )}
 
-      {/* Announcement bar - under videos */}
-      <div className={cn("bg-black text-white text-xs md:text-sm py-3 text-center px-4", isRtl ? "" : "uppercase tracking-[0.2em]")}>
+      {/* Announcement bar - Bilyar green background, gold text */}
+      <div className={cn("bg-primary text-accent text-sm md:text-base py-3 text-center px-4 font-medium", isRtl ? "" : "uppercase tracking-[0.15em]")}>
         {t.announcement}
       </div>
 

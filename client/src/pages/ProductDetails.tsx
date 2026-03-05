@@ -192,6 +192,10 @@ export default function ProductDetails() {
                         <Label className="text-[10px] uppercase">{t.chest}</Label>
                         <Input ref={el => { measurementRefs.current["dressChest"] = el; }} className="rounded-none h-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0" type="number" step="0.1" data-testid="input-dress-chest" />
                       </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase">{t.sleeve_length}</Label>
+                        <Input ref={el => { measurementRefs.current["dressSleeve"] = el; }} className="rounded-none h-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0" type="number" step="0.1" data-testid="input-dress-sleeve" />
+                      </div>
                     </div>
                   </div>
                 )}

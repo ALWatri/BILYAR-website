@@ -4,6 +4,13 @@ import { getInvoiceHtml } from "./invoice-html";
 
 type OrderWithItems = Order & { items: OrderItem[] };
 
+const EMERALD = "#0B3F34";
+const EMERALD_DARK = "#072E26";
+const GOLD = "#C8A96A";
+const IVORY = "#F7F4EC";
+const INK = "#1F1F1F";
+const MUTED = "#6D6D6D";
+
 function getDriver(order: OrderWithItems) {
   const o = order as OrderWithItems & {
     customerNameEn?: string | null;
@@ -19,58 +26,151 @@ function getDriver(order: OrderWithItems) {
   };
 }
 
+function formatDate(dateStr: string): string {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
+
+function paymentMethodLabel(method: string | undefined): string {
+  const m = (method || "tap").toLowerCase();
+  if (m === "tap" || m === "card") return "KNET / Card";
+  if (m === "deema") return "Deema";
+  if (m === "manual") return "Manual";
+  return method || "—";
+}
+
 /** PDFKit fallback when Puppeteer/Chromium unavailable (e.g. Render) */
-function generatePdfWithPdfKit(order: OrderWithItems): Promise<Buffer> {
+function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margin: 0, size: "A4" });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
     const driver = getDriver(order);
+    const pageW = 595;
+    const pageH = 842;
+    const margin = 24;
+    const border = 10;
+    const contentLeft = margin + border + 10;
+    const contentRight = pageW - contentLeft;
+    const contentWidth = contentRight - contentLeft;
+    const paperW = pageW - 2 * margin;
+    const paperH = pageH - 2 * margin;
 
-    doc.fontSize(24).fillColor("#0B3F34").text("BILYAR.", { align: "center" });
-    doc.moveDown(0.5);
-    doc.fontSize(10).fillColor("#6D6D6D").text("PAYMENT SLIP • إيصال الدفع", { align: "center" });
-    doc.fontSize(9).fillColor("#0B3F34").text("PAID • مدفوع", { align: "center" });
-    doc.moveDown();
+    // Dark green background
+    doc.rect(0, 0, pageW, pageH).fill(EMERALD_DARK);
+    // Cream paper
+    doc.rect(margin, margin, paperW, paperH).fill(IVORY);
+    // Dark green thick border
+    doc.rect(margin, margin, paperW, paperH).lineWidth(border).stroke(EMERALD);
+    // Gold inner line
+    doc.rect(margin + border + 2, margin + border + 2, paperW - 2 * (border + 2), paperH - 2 * (border + 2))
+      .lineWidth(1).stroke(GOLD);
+    // Thin emerald inner
+    doc.rect(margin + border + 5, margin + border + 5, paperW - 2 * (border + 5), paperH - 2 * (border + 5))
+      .lineWidth(1).stroke(EMERALD);
 
-    doc.fontSize(9).fillColor("#6D6D6D").text("العميل • Customer");
-    doc.fontSize(12).fillColor("#1F1F1F").text(driver.name);
-    doc.fontSize(9).text(`${order.customerPhone}\n${order.customerEmail || "—"}`);
-    doc.moveDown();
+    doc.x = contentLeft;
+    doc.y = 50;
 
-    doc.fontSize(9).fillColor("#6D6D6D").text(`Order: ${order.orderNumber}  |  Date: ${order.createdAt}`);
-    doc.moveDown();
+    // BILYAR. logo
+    doc.fontSize(32).fillColor(GOLD).font("Helvetica-Bold").text("BILYAR.", contentLeft, doc.y, { align: "center", width: contentWidth });
+    doc.y += 28;
+    // INVOICE
+    doc.fontSize(11).fillColor(INK).font("Helvetica").text("INVOICE", contentLeft, doc.y, { align: "center", width: contentWidth });
+    doc.y += 40;
 
-    let y = doc.y;
-    doc.fontSize(9).fillColor("#0B3F34");
-    doc.text("Item", 50, y);
-    doc.text("Qty", 280, y);
-    doc.text("Size", 320, y);
-    doc.text("Total (KWD)", 400, y);
-    doc.moveTo(50, y + 12).strokeColor("#E7E1D4").lineTo(550, y + 12).stroke();
-    doc.moveDown();
+    // BILL TO (left) | Invoice meta (right)
+    doc.fontSize(9).fillColor(MUTED).font("Helvetica-Bold").text("BILL TO", contentLeft);
+    doc.y += 4;
+    doc.fontSize(10).fillColor(INK).text(driver.name, contentLeft);
+    doc.fontSize(9).text(`${driver.address}\n${driver.city}, ${driver.country}\n${order.customerPhone}\n${order.customerEmail || "—"}`, contentLeft);
+    const billToBottom = doc.y;
 
-    doc.fillColor("#1F1F1F");
+    doc.y = 50 + 28 + 12;
+    doc.fontSize(9).fillColor(INK);
+    doc.text(`Invoice # ${order.orderNumber}`, contentRight, doc.y, { width: 180, align: "right" });
+    doc.y += 14;
+    doc.text(`Date: ${formatDate(order.createdAt)}`, contentRight, doc.y, { width: 180, align: "right" });
+    doc.y += 14;
+    doc.fillColor(EMERALD).text("Status: Paid", contentRight, doc.y, { width: 180, align: "right" });
+
+    doc.y = Math.max(billToBottom, doc.y) + 20;
+
+    // Table header
+    const col1 = contentLeft;
+    const col2 = contentLeft + 260;
+    const col3 = contentLeft + 340;
+    const col4 = contentRight - 80;
+    const th = doc.y;
+    doc.rect(contentLeft, th, contentWidth, 22).fill(EMERALD);
+    doc.fontSize(9).fillColor("#ffffff").font("Helvetica-Bold");
+    doc.text("DESCRIPTION", col1 + 8, th + 6);
+    doc.text("PRICE", col2, th + 6);
+    doc.text("QTY", col3, th + 6);
+    doc.text("TOTAL", col4, th + 6);
+    doc.y = th + 28;
+
+    // Table rows
+    doc.fontSize(10).fillColor(INK).font("Helvetica");
     for (const item of order.items) {
       const lineTotal = (item.price * item.quantity).toFixed(3);
-      doc.text(item.productName, 50);
-      doc.text(String(item.quantity), 280);
-      doc.text(item.size || "—", 320);
-      doc.text(lineTotal, 400);
-      doc.moveDown(0.4);
+      doc.text(item.productName, col1 + 8, doc.y, { width: 245 });
+      doc.text((item.price).toFixed(3) + " KWD", col2, doc.y);
+      doc.text(String(item.quantity), col3, doc.y);
+      doc.text(lineTotal + " KWD", col4, doc.y);
+      doc.y += 18;
     }
+    doc.y += 12;
 
-    doc.moveDown();
-    doc.moveTo(50, doc.y).strokeColor("#E7E1D4").lineTo(550, doc.y).stroke();
-    doc.moveDown(0.5);
-    doc.text(`Subtotal: ${(order.total - order.shippingCost).toFixed(3)} KWD`, 400);
-    doc.text(`Delivery: ${order.shippingCost} KWD`, 400);
-    doc.fontSize(11).fillColor("#0B3F34").text(`Total: ${order.total.toFixed(3)} KWD`, 400);
-    doc.moveDown();
-    doc.fontSize(9).fillColor("#6D6D6D").text("Thank you for choosing Bilyar", { align: "center" });
+    // Summary (right-aligned)
+    const sumLeft = contentRight - 200;
+    doc.fontSize(10).fillColor(INK);
+    doc.text("Subtotal", sumLeft, doc.y);
+    doc.text((order.total - order.shippingCost).toFixed(3) + " KWD", contentRight, doc.y);
+    doc.y += 14;
+    doc.text("Delivery", sumLeft, doc.y);
+    doc.text(order.shippingCost.toFixed(3) + " KWD", contentRight, doc.y);
+    doc.y += 14;
+    doc.moveTo(sumLeft, doc.y).lineTo(contentRight, doc.y).strokeColor("#E7E1D4").stroke();
+    doc.y += 10;
+    doc.fontSize(12).fillColor(EMERALD).font("Helvetica-Bold");
+    doc.text("Total", sumLeft, doc.y);
+    doc.text(order.total.toFixed(3) + " KWD", contentRight, doc.y);
+    doc.y += 28;
+
+    // PAYMENT DETAILS
+    doc.fontSize(9).fillColor(MUTED).font("Helvetica-Bold").text("PAYMENT DETAILS");
+    doc.y += 6;
+    const pm = paymentMethodLabel((order as { paymentMethod?: string }).paymentMethod);
+    const pid = (order as { paymentId?: string }).paymentId || "—";
+    doc.fontSize(10).fillColor(INK).font("Helvetica");
+    doc.text(`Method: ${pm}`);
+    doc.text(`Transaction: ${pid}`);
+    doc.y += 28;
+
+    // Divider
+    doc.moveTo(contentLeft, doc.y).lineTo(contentRight, doc.y).strokeColor(GOLD).opacity(0.6).stroke().opacity(1);
+    doc.y += 20;
+
+    // Thank you
+    doc.fontSize(22).fillColor(INK).font("Helvetica-Oblique").text("Thank you for your business!", contentLeft, doc.y, { align: "center", width: contentWidth });
+    doc.y += 24;
+
+    // Contact
+    const siteUrl = process.env.SITE_URL || "https://bilyarofficial.com";
+    const siteDisplay = siteUrl.replace(/^https?:\/\//, "");
+    const storePhone = settings?.storePhone || "+965 XXXXXXXX";
+    const storeEmail = settings?.storeEmail || "info@bilyarofficial.com";
+    doc.fontSize(10).fillColor(MUTED).font("Helvetica").text(
+      `${siteDisplay} • ${storePhone} • ${storeEmail}`,
+      contentLeft, doc.y, { align: "center", width: contentWidth }
+    );
+
     doc.end();
   });
 }
@@ -115,6 +215,6 @@ export async function generateInvoicePdf(order: OrderWithItems, settings?: Setti
     }
   } catch (puppeteerErr) {
     console.warn("Puppeteer invoice failed, using PDFKit fallback:", puppeteerErr instanceof Error ? puppeteerErr.message : String(puppeteerErr));
-    return generatePdfWithPdfKit(order);
+    return generatePdfWithPdfKit(order, settings);
   }
 }

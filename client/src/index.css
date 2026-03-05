@@ -150,10 +150,12 @@
   }
   body[lang="ar"] {
     @apply font-arabic;
-    letter-spacing: normal;
+    letter-spacing: 0;
+    word-spacing: normal;
   }
   body[lang="ar"] * {
-    letter-spacing: normal;
+    letter-spacing: 0;
+    word-spacing: normal;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif font-medium tracking-tight;

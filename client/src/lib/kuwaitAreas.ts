@@ -1,5 +1,17 @@
 export type KuwaitArea = { en: string; ar: string };
 
+/** Areas with 5 KWD delivery (rest get 3 KWD). Free when 2+ items. */
+const EXPENSIVE_AR = new Set(["المطلاع", "صباح الأحمد", "جنوب صباح الأحمد", "الخيران", "أم الهيمان"]);
+const EXPENSIVE_EN = new Set(["al-mutlaa", "mutlaa", "sabah al ahmad", "south sabah al ahmad", "khiran", "umm al hayman", "um al hayman"]);
+
+export function is5KwdDeliveryArea(city: string): boolean {
+  const trimmed = (city || "").trim();
+  if (!trimmed) return false;
+  if (EXPENSIVE_AR.has(trimmed)) return true;
+  const norm = trimmed.toLowerCase().replace(/\s+/g, " ").replace(/-/g, " ");
+  return EXPENSIVE_EN.has(norm);
+}
+
 // Source: Common Kuwait areas (based on public listings, e.g. "Areas of Kuwait").
 // Note: If an area is missing, the checkout field still allows manual typing.
 export const KUWAIT_AREAS: KuwaitArea[] = [

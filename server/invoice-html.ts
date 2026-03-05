@@ -21,15 +21,7 @@ function formatDate(dateStr: string): string {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function formatTime(dateStr: string): string {
-  if (!dateStr) return "—";
-  if (!/T|\s\d/.test(dateStr)) return "—";
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true });
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
 function paymentMethodLabel(method: string | undefined): string {
@@ -40,20 +32,12 @@ function paymentMethodLabel(method: string | undefined): string {
   return method || "—";
 }
 
-function statusLabel(status: string): string {
-  const s = status?.toLowerCase();
-  if (s === "paid" || s === "processing") return "Preparing";
-  if (s === "shipped") return "Shipped";
-  if (s === "delivered") return "Delivered";
-  if (s === "pending" || s === "unfinished") return "Pending";
-  return status || "—";
-}
-
 export function getInvoiceHtml(order: OrderWithItems, settings?: Settings | null): string {
   const driver = getDriver(order);
   const siteUrl = process.env.SITE_URL || "https://bilyarofficial.com";
-  const orderUrl = `${siteUrl}/order/${order.id}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(orderUrl)}`;
+  const storeEmail = escapeHtml(settings?.storeEmail || "info@bilyarofficial.com");
+  const storePhone = escapeHtml(settings?.storePhone || "+965 XXXXXXXX");
+  const siteDisplay = escapeHtml(siteUrl.replace(/^https?:\/\//, ""));
 
   const itemsHtml = order.items
     .map(
@@ -70,127 +54,98 @@ export function getInvoiceHtml(order: OrderWithItems, settings?: Settings | null
   const subtotal = (order.total - order.shippingCost).toFixed(3);
   const shipping = order.shippingCost.toFixed(3);
   const total = order.total.toFixed(3);
-
   const paymentMethod = paymentMethodLabel((order as { paymentMethod?: string }).paymentMethod);
-  const paymentId = (order as { paymentId?: string }).paymentId || "—";
-  const deliveryStatus = statusLabel(order.status);
-  const eta = order.status === "Shipped" ? "24-48h" : "24-48h";
-
-  const slipNumber = `PS-${String(order.id).padStart(4, "0")}`;
+  const paymentId = escapeHtml((order as { paymentId?: string }).paymentId || "—");
 
   return `<!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>BILYAR Payment Slip - ${escapeHtml(order.orderNumber)}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<title>BILYAR Invoice - ${escapeHtml(order.orderNumber)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Caveat&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--emerald:#0B3F34;--emerald2:#072E26;--gold:#C8A96A;--ivory:#F7F4EC;--ink:#1F1F1F;--muted:#6D6D6D;--line:#E7E1D4}
+:root{--emerald:#0B3F34;--emerald-dark:#072E26;--gold:#C8A96A;--ivory:#F7F4EC;--ink:#1F1F1F;--muted:#6D6D6D}
 *{box-sizing:border-box}
-body{margin:0;background:#111;font-family:Tajawal,Inter,sans-serif;padding:20px;color:var(--ink)}
-.paper{width:210mm;min-height:297mm;margin:auto;background:var(--ivory);border:10px solid var(--emerald);position:relative;box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden}
-.paper::before{content:"";position:absolute;inset:14px;border:2px solid rgba(200,169,106,.7)}
-.watermark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",serif;font-size:220px;color:rgba(200,169,106,.05);letter-spacing:.2em;pointer-events:none}
-.wrap{position:relative;padding:40px;z-index:2}
-.brand{text-align:center;margin-bottom:20px}
-.logo{font-family:"Cormorant Garamond",serif;font-size:46px;letter-spacing:.12em;color:var(--gold);margin:0}
-.rule{height:2px;width:180px;background:var(--gold);margin:14px auto}
-.subtitle{font-size:12px;letter-spacing:.25em;text-transform:uppercase}
-.status{display:inline-block;margin-top:10px;padding:8px 14px;border-radius:30px;background:rgba(11,63,52,.1);border:1px solid var(--gold);font-size:12px;letter-spacing:.1em}
-.top{display:flex;justify-content:space-between;margin-top:30px;border-top:1px solid var(--line);padding-top:20px}
-.block h4{margin:0 0 8px;font-size:12px;color:var(--muted);letter-spacing:.15em}
-.big{font-size:18px;margin:0 0 6px}
-.meta{text-align:left}
-.kv{display:flex;justify-content:space-between;margin:6px 0;font-size:13px}
-table{width:100%;border-collapse:collapse;margin-top:25px;font-size:13px}
-thead th{background:var(--emerald);color:var(--gold);padding:12px;font-size:11px;letter-spacing:.12em}
-tbody td{padding:12px;border-bottom:1px solid var(--line)}
-.num{text-align:left}
-.summary{margin-top:20px;display:flex;justify-content:flex-end}
-.summary-card{width:300px}
-.sum-row{display:flex;justify-content:space-between;margin:7px 0}
-.total{font-size:20px;font-family:"Cormorant Garamond",serif;border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
-.cards{display:flex;gap:20px;margin-top:25px}
-.card{flex:1;border:1px solid rgba(200,169,106,.4);padding:14px;border-radius:6px}
-.row{display:flex;justify-content:space-between;margin:6px 0;font-size:13px}
-.qr{margin-top:25px;text-align:center}
-.qr img{width:90px}
-.footer{text-align:center;margin-top:30px}
-.thanks{font-family:"Cormorant Garamond",serif;font-size:24px;margin-bottom:8px}
-.contact{font-size:12px;letter-spacing:.1em}
+body{margin:0;background:var(--emerald-dark);font-family:Inter,sans-serif;padding:24px;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.paper{width:210mm;min-height:297mm;background:var(--ivory);border:12px solid var(--emerald);position:relative;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.paper::before{content:"";position:absolute;inset:18px;border:1px solid var(--gold)}
+.paper::after{content:"";position:absolute;inset:22px;border:1px solid var(--emerald)}
+.wrap{position:relative;padding:48px;z-index:2}
+.logo{font-family:"Cormorant Garamond",serif;font-size:42px;font-weight:600;color:var(--gold);margin:0;text-align:center;letter-spacing:.08em}
+.invoice-title{font-size:14px;letter-spacing:.2em;color:var(--ink);text-align:center;margin:8px 0 32px;font-weight:500}
+.top-row{display:flex;justify-content:space-between;margin-bottom:32px;gap:24px}
+.bill-to{flex:1}
+.bill-to h4{font-size:10px;letter-spacing:.15em;color:var(--muted);margin:0 0 8px;font-weight:600}
+.bill-to p{margin:0 0 4px;font-size:12px;color:var(--ink);line-height:1.5}
+.invoice-meta{text-align:right}
+.invoice-meta p{margin:0 0 4px;font-size:11px;color:var(--ink)}
+.invoice-meta strong{color:var(--emerald)}
+table{width:100%;border-collapse:collapse;margin:0 0 24px}
+thead th{background:var(--emerald);color:#fff;padding:12px 14px;font-size:10px;letter-spacing:.12em;font-weight:600;text-align:left}
+thead th.num{text-align:right}
+tbody td{padding:12px 14px;border-bottom:1px solid #E7E1D4;font-size:12px;color:var(--ink)}
+tbody td.num{text-align:right}
+.summary-wrap{display:flex;justify-content:flex-end;margin-bottom:28px}
+.summary{width:240px}
+.summary .row{display:flex;justify-content:space-between;padding:6px 0;font-size:12px}
+.summary .total-row{border-top:1px solid #E7E1D4;margin-top:8px;padding-top:10px;font-size:14px;font-weight:600;color:var(--emerald)}
+.payment-section{margin-bottom:28px}
+.payment-section h4{font-size:10px;letter-spacing:.15em;color:var(--muted);margin:0 0 8px;font-weight:600}
+.payment-section p{margin:0 0 4px;font-size:12px;color:var(--ink)}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:24px 0;opacity:.6}
+.thanks{font-family:Caveat,sans-serif;font-size:28px;color:var(--ink);text-align:center;margin:0 0 8px}
+.contact{font-size:11px;color:var(--muted);text-align:center;letter-spacing:.08em}
 </style>
 </head>
 <body>
 <div class="paper">
-<div class="watermark">B</div>
 <div class="wrap">
-<div class="brand">
 <h1 class="logo">BILYAR.</h1>
-<div class="rule"></div>
-<div class="subtitle">PAYMENT SLIP • إيصال الدفع</div>
-<div class="status">PAID • مدفوع</div>
+<p class="invoice-title">INVOICE</p>
+<div class="top-row">
+<div class="bill-to">
+<h4>BILL TO</h4>
+<p><strong>${escapeHtml(driver.name)}</strong></p>
+<p>${escapeHtml(driver.address)}</p>
+<p>${escapeHtml(driver.city)}, ${escapeHtml(driver.country)}</p>
+<p>${escapeHtml(order.customerPhone)}</p>
+<p>${escapeHtml(order.customerEmail || "—")}</p>
 </div>
-<div class="top">
-<div class="block">
-<h4>العميل • Customer</h4>
-<p class="big">${escapeHtml(driver.name)}</p>
-<div>
-${escapeHtml(order.customerPhone)}<br>
-${escapeHtml(order.customerEmail || "—")}
-</div>
-</div>
-<div class="block meta">
-<div class="kv"><span>Slip #</span><strong>${escapeHtml(slipNumber)}</strong></div>
-<div class="kv"><span>Order #</span><strong>${escapeHtml(order.orderNumber)}</strong></div>
-<div class="kv"><span>التاريخ</span><strong>${escapeHtml(formatDate(order.createdAt))}</strong></div>
-<div class="kv"><span>الوقت</span><strong>${formatTime(order.createdAt)}</strong></div>
+<div class="invoice-meta">
+<p>Invoice # <strong>${escapeHtml(order.orderNumber)}</strong></p>
+<p>Date: <strong>${formatDate(order.createdAt)}</strong></p>
+<p>Status: <strong>Paid</strong></p>
 </div>
 </div>
 <table>
 <thead>
 <tr>
-<th>Item / المنتج</th>
-<th>السعر</th>
-<th>الكمية</th>
-<th>المجموع</th>
+<th>DESCRIPTION</th>
+<th class="num">PRICE</th>
+<th class="num">QTY</th>
+<th class="num">TOTAL</th>
 </tr>
 </thead>
 <tbody>
 ${itemsHtml}
 </tbody>
 </table>
+<div class="summary-wrap">
 <div class="summary">
-<div class="summary-card">
-<div class="sum-row"><span>Subtotal</span><strong>${subtotal} KWD</strong></div>
-<div class="sum-row"><span>Delivery</span><strong>${shipping} KWD</strong></div>
-<div class="sum-row total"><span>Total</span><strong>${total} KWD</strong></div>
+<div class="row"><span>Subtotal</span><span>${subtotal} KWD</span></div>
+<div class="row"><span>Delivery</span><span>${shipping} KWD</span></div>
+<div class="row total-row"><span>Total</span><span>${total} KWD</span></div>
 </div>
 </div>
-<div class="cards">
-<div class="card">
-<h4>Payment</h4>
-<div class="row"><span>Method</span><strong>${escapeHtml(paymentMethod)}</strong></div>
-<div class="row"><span>Transaction</span><strong>${escapeHtml(paymentId)}</strong></div>
+<div class="payment-section">
+<h4>PAYMENT DETAILS</h4>
+<p>Method: <strong>${escapeHtml(paymentMethod)}</strong></p>
+<p>Transaction: <strong>${paymentId}</strong></p>
 </div>
-<div class="card">
-<h4>Delivery</h4>
-<div class="row"><span>Status</span><strong>${escapeHtml(deliveryStatus)}</strong></div>
-<div class="row"><span>ETA</span><strong>${escapeHtml(eta)}</strong></div>
-</div>
-</div>
-<div class="qr">
-<img src="${escapeHtml(qrUrl)}" alt="QR" />
-<p style="font-size:11px;color:#6D6D6D">Scan to verify order</p>
-</div>
-<div class="footer">
-<p class="thanks">Thank you for choosing Bilyar</p>
-<div class="contact">
-${escapeHtml(siteUrl.replace(/^https?:\/\//, ""))} • ${escapeHtml(settings?.storePhone || "+965 XXXXXXXX")} • ${escapeHtml(settings?.storeEmail || "info@bilyarofficial.com")}
-</div>
-</div>
+<div class="divider"></div>
+<p class="thanks">Thank you for your business!</p>
+<p class="contact">${siteDisplay} • ${storePhone} • ${storeEmail}</p>
 </div>
 </div>
 </body>

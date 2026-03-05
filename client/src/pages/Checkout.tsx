@@ -11,12 +11,20 @@ import { translations } from "@/lib/translations";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, ArrowRight, ShoppingBag, Truck, Shield } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { KUWAIT_AREAS } from "@/lib/kuwaitAreas";
+import { KUWAIT_AREAS, is5KwdDeliveryArea } from "@/lib/kuwaitAreas";
 
 const CHECKOUT_DRAFT_KEY = "bilyar.checkoutDraft.v1";
 
 export default function Checkout() {
-  const { items, subtotal, shippingCost, total, clearCart } = useCart();
+  const { items, clearCart } = useCart();
+  const itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
+  const displaySubtotal = items.reduce((acc, item) => {
+    const p = item.product as { topPrice?: number | null };
+    const price = item.variant === "top" && p?.topPrice != null ? p.topPrice : item.product.price;
+    return acc + price * item.quantity;
+  }, 0);
+  const displayShipping = itemCount >= 2 ? 0 : (is5KwdDeliveryArea(form.city) ? 5 : 3);
+  const displayTotal = displaySubtotal + displayShipping;
   const [, navigate] = useLocation();
   const [lang, setLang] = useState<"en" | "ar">("en");
   const [paymentMethod, setPaymentMethod] = useState<"tap" | "deema">("tap");
@@ -398,17 +406,17 @@ export default function Checkout() {
                   <div className="space-y-3 pt-4 border-t border-border">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{t.subtotal}</span>
-                      <span>{subtotal.toFixed(3)} KWD</span>
+                      <span>{displaySubtotal.toFixed(3)} KWD</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{t.shipping}</span>
-                      <span className={shippingCost === 0 ? "text-green-600 font-medium" : ""}>
-                        {shippingCost === 0 ? t.free : `${shippingCost.toFixed(3)} KWD`}
+                      <span className={displayShipping === 0 ? "text-green-600 font-medium" : ""}>
+                        {displayShipping === 0 ? t.free : `${displayShipping.toFixed(3)} KWD`}
                       </span>
                     </div>
                     <div className="flex justify-between text-lg font-serif font-bold pt-3 border-t border-border">
                       <span>{t.total}</span>
-                      <span>{total.toFixed(3)} KWD</span>
+                      <span>{displayTotal.toFixed(3)} KWD</span>
                     </div>
                   </div>
 
