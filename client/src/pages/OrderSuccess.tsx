@@ -7,12 +7,16 @@ import { translations } from "@/lib/translations";
 import { CheckCircle, Package } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { OrderWithItems } from "@/lib/data";
+import { useCart } from "@/lib/cart";
+
+const CHECKOUT_DRAFT_KEY = "bilyar.checkoutDraft.v1";
 
 export default function OrderSuccess() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const orderId = params.get("orderId");
   const isDemo = params.get("demo") === "true";
+  const { clearCart } = useCart();
 
   const [lang, setLang] = useState<"en" | "ar">("en");
 
@@ -23,6 +27,13 @@ export default function OrderSuccess() {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    // Successful order: clear cart and checkout draft.
+    if (!orderId) return;
+    try { localStorage.removeItem(CHECKOUT_DRAFT_KEY); } catch {}
+    clearCart();
+  }, [orderId, clearCart]);
 
   const t = translations[lang].order_confirmation;
   const isRtl = lang === "ar";

@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import { ArrowLeft, ArrowRight, ShoppingBag, Truck, Shield } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
+const CHECKOUT_DRAFT_KEY = "bilyar.checkoutDraft.v1";
+
 export default function Checkout() {
   const { items, subtotal, shippingCost, total, clearCart } = useCart();
   const [, navigate] = useLocation();
@@ -29,6 +31,19 @@ export default function Checkout() {
     city: "",
     country: "Kuwait",
   });
+
+  useEffect(() => {
+    // Restore draft so customers don't lose info after payment redirect/failure.
+    try {
+      const raw = localStorage.getItem(CHECKOUT_DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as { form?: typeof form; paymentMethod?: "tap" | "deema" };
+      if (draft?.form) setForm((prev) => ({ ...prev, ...draft.form }));
+      if (draft?.paymentMethod) setPaymentMethod(draft.paymentMethod);
+    } catch {
+      // Ignore corrupted draft
+    }
+  }, []);
 
   useEffect(() => {
     const checkLang = () => {
@@ -58,6 +73,16 @@ export default function Checkout() {
     setError("");
 
     try {
+      // Save draft before any navigation/redirect so data survives payment flow.
+      try {
+        localStorage.setItem(
+          CHECKOUT_DRAFT_KEY,
+          JSON.stringify({ form, paymentMethod })
+        );
+      } catch {
+        // Ignore storage errors
+      }
+
       const orderRes = await apiRequest("POST", "/api/orders", {
         customer: {
           name: form.fullName,
@@ -93,6 +118,7 @@ export default function Checkout() {
       const paymentData = await paymentRes.json();
 
       if (paymentData.demo) {
+        try { localStorage.removeItem(CHECKOUT_DRAFT_KEY); } catch {}
         clearCart();
         navigate(`/order/success?orderId=${order.id}&demo=true`);
         return;
