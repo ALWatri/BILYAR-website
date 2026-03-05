@@ -17,21 +17,12 @@ const CHECKOUT_DRAFT_KEY = "bilyar.checkoutDraft.v1";
 
 export default function Checkout() {
   const { items, clearCart } = useCart();
-  const itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
-  const displaySubtotal = items.reduce((acc, item) => {
-    const p = item.product as { topPrice?: number | null };
-    const price = item.variant === "top" && p?.topPrice != null ? p.topPrice : item.product.price;
-    return acc + price * item.quantity;
-  }, 0);
-  const displayShipping = itemCount >= 2 ? 0 : (is5KwdDeliveryArea(form.city) ? 5 : 3);
-  const displayTotal = displaySubtotal + displayShipping;
   const [, navigate] = useLocation();
   const [lang, setLang] = useState<"en" | "ar">("en");
   const [paymentMethod, setPaymentMethod] = useState<"tap" | "deema">("tap");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
-
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -40,6 +31,15 @@ export default function Checkout() {
     city: "",
     country: "Kuwait",
   });
+
+  const itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
+  const displaySubtotal = items.reduce((acc, item) => {
+    const p = item.product as { topPrice?: number | null };
+    const price = item.variant === "top" && p?.topPrice != null ? p.topPrice : item.product.price;
+    return acc + price * item.quantity;
+  }, 0);
+  const displayShipping = itemCount >= 2 ? 0 : (is5KwdDeliveryArea(form.city) ? 5 : 3);
+  const displayTotal = displaySubtotal + displayShipping;
 
   useEffect(() => {
     // Restore draft so customers don't lose info after payment redirect/failure.
