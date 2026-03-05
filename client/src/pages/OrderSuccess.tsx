@@ -88,6 +88,14 @@ export default function OrderSuccess() {
                 <span>{isRtl ? "الإجمالي" : "Total"}</span>
                 <span>{order.total.toFixed(3)} KWD</span>
               </div>
+              <a
+                href={`/api/orders/${order.id}/invoice-pdf?dl=1`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline"
+              >
+                {t.download_invoice}
+              </a>
             </div>
           )}
 

@@ -21,6 +21,7 @@ import type { Product } from "@/lib/data";
 export default function ProductDetails() {
   const [, params] = useRoute("/product/:id");
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [purchaseVariant, setPurchaseVariant] = useState<"set" | "top">("set");
   const [lang, setLang] = useState<"en" | "ar">("en");
   const [addedToCart, setAddedToCart] = useState(false);
   const { addItem } = useCart();
@@ -73,6 +74,12 @@ export default function ProductDetails() {
     : [];
   const showSizes = sizesWithStock.length > 0;
   const outOfStock = (product as Product & { outOfStock?: boolean }).outOfStock ?? false;
+  const topSoldSeparately = (product as Product & { topSoldSeparately?: boolean }).topSoldSeparately ?? false;
+  const topPrice = (product as Product & { topPrice?: number | null }).topPrice ?? null;
+  const hasDress = (product as Product & { hasDress?: boolean }).hasDress ?? false;
+  const showTrouser = product.hasTrouser && (purchaseVariant === "set" || !topSoldSeparately);
+  const showShirt = product.hasShirt;
+  const displayPrice = purchaseVariant === "top" && topPrice != null ? topPrice : product.price;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -94,7 +101,37 @@ export default function ProductDetails() {
           <div className="sticky top-24 h-fit">
             <div className={cn("mb-8", isRtl ? "text-right" : "text-left")}>
               <h1 className="text-4xl font-serif mb-2" data-testid="text-product-name">{name}</h1>
-              <p className="text-2xl text-primary font-medium" data-testid="text-product-price">{product.price} KWD</p>
+              {topSoldSeparately ? (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setPurchaseVariant("set")}
+                      className={cn(
+                        "px-4 py-2 border text-sm font-medium transition-all",
+                        purchaseVariant === "set" ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"
+                      )}
+                    >
+                      {t.full_set} — {product.price} KWD
+                    </button>
+                    {topPrice != null && (
+                      <button
+                        type="button"
+                        onClick={() => setPurchaseVariant("top")}
+                        className={cn(
+                          "px-4 py-2 border text-sm font-medium transition-all",
+                          purchaseVariant === "top" ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"
+                        )}
+                      >
+                        {t.top_only} — {topPrice} KWD
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-lg text-primary font-medium" data-testid="text-product-price">{displayPrice} KWD</p>
+                </div>
+              ) : (
+                <p className="text-2xl text-primary font-medium" data-testid="text-product-price">{product.price} KWD</p>
+              )}
             </div>
 
             <div className="space-y-8 mb-12">
@@ -133,7 +170,33 @@ export default function ProductDetails() {
                   {t.custom_measurements}
                 </h3>
                 
-                {product.hasShirt && (
+                {hasDress && (
+                  <div className="space-y-4">
+                    <h4 className={cn("text-xs font-medium text-muted-foreground uppercase tracking-widest", isRtl ? "text-right" : "text-left")}>
+                      {t.dress_measurements}
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase">{t.length}</Label>
+                        <Input ref={el => { measurementRefs.current["dressLength"] = el; }} className="rounded-none h-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0" type="number" step="0.1" data-testid="input-dress-length" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase">{t.shoulder}</Label>
+                        <Input ref={el => { measurementRefs.current["dressShoulder"] = el; }} className="rounded-none h-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0" type="number" step="0.1" data-testid="input-dress-shoulder" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase">{t.hip_width}</Label>
+                        <Input ref={el => { measurementRefs.current["dressHip"] = el; }} className="rounded-none h-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0" type="number" step="0.1" data-testid="input-dress-hip" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase">{t.chest}</Label>
+                        <Input ref={el => { measurementRefs.current["dressChest"] = el; }} className="rounded-none h-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0" type="number" step="0.1" data-testid="input-dress-chest" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {showShirt && (
                   <div className="space-y-4">
                     <h4 className={cn("text-xs font-medium text-muted-foreground uppercase tracking-widest", isRtl ? "text-right" : "text-left")}>
                       {t.shirt_measurements}
@@ -163,7 +226,7 @@ export default function ProductDetails() {
                   </div>
                 )}
 
-                {product.hasTrouser && (
+                {showTrouser && (
                   <div className="space-y-4 pt-4">
                     <h4 className={cn("text-xs font-medium text-muted-foreground uppercase tracking-widest", isRtl ? "text-right" : "text-left")}>
                       {t.trouser_measurements}
@@ -227,10 +290,12 @@ export default function ProductDetails() {
                   Object.entries(measurementRefs.current).forEach(([key, el]) => {
                     if (el && el.value) measurements[key] = el.value;
                   });
+                  const variant = topSoldSeparately ? purchaseVariant : undefined;
                   addItem({
                     product,
                     quantity: 1,
                     size: showSizes ? (selectedSize ?? "") : t.one_size,
+                    variant: variant === "top" ? "top" : undefined,
                     measurements: Object.keys(measurements).length > 0 ? measurements : undefined,
                     notes: notesRef.current?.value || undefined,
                   });

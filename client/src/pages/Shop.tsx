@@ -74,7 +74,12 @@ export default function Shop() {
   ];
 
   const filteredProducts = useMemo(() => {
-    const list = products.filter((p) => filter === "All" || (p.category && p.category.toLowerCase() === filter.toLowerCase()));
+    const list = products.filter((p) => {
+      if (filter === "All") return true;
+      const cat = (p as { category2?: string | null }).category2;
+      return (p.category && p.category.toLowerCase() === filter.toLowerCase()) ||
+        (cat && cat.toLowerCase() === filter.toLowerCase());
+    });
     if (sortBy === "price-asc") return [...list].sort((a, b) => a.price - b.price);
     if (sortBy === "price-desc") return [...list].sort((a, b) => b.price - a.price);
     if (sortBy === "newest") return [...list].sort((a, b) => (b.id ?? 0) - (a.id ?? 0));

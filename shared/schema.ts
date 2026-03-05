@@ -16,6 +16,11 @@ export const products = pgTable("products", {
   descriptionAr: text("description_ar").notNull(),
   hasShirt: boolean("has_shirt").default(false),
   hasTrouser: boolean("has_trouser").default(false),
+  hasDress: boolean("has_dress").default(false),
+  topSoldSeparately: boolean("top_sold_separately").default(false),
+  topPrice: real("top_price"),
+  category2: text("category_2"),
+  categoryAr2: text("category_ar_2"),
   sku: text("sku"),
   stockBySize: jsonb("stock_by_size"), // e.g. { "S": 5, "M": 3, "L": 0, "One Size": 2 } — stock per size; if 0, show measurements only
   outOfStock: boolean("out_of_stock").default(false),

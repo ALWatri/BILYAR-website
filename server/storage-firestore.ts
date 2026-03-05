@@ -44,6 +44,11 @@ function toProduct(doc: DocumentSnapshot): Product {
     descriptionAr: d.descriptionAr,
     hasShirt: d.hasShirt ?? false,
     hasTrouser: d.hasTrouser ?? false,
+    hasDress: d.hasDress ?? false,
+    topSoldSeparately: d.topSoldSeparately ?? false,
+    topPrice: d.topPrice ?? null,
+    category2: d.category2 ?? null,
+    categoryAr2: d.categoryAr2 ?? null,
     sku: d.sku ?? null,
     stockBySize: (d.stockBySize as Record<string, number>) ?? null,
     outOfStock: d.outOfStock ?? false,
@@ -185,7 +190,9 @@ export class FirestoreStorage implements IStorage {
           p.description.toLowerCase().includes(term) ||
           p.descriptionAr.includes(term) ||
           p.category.toLowerCase().includes(term) ||
-          p.categoryAr.includes(term)
+          p.categoryAr.includes(term) ||
+          (p.category2 && p.category2.toLowerCase().includes(term)) ||
+          (p.categoryAr2 && p.categoryAr2.includes(term))
       );
     }
     return list;
@@ -215,6 +222,11 @@ export class FirestoreStorage implements IStorage {
       descriptionAr: product.descriptionAr,
       hasShirt: product.hasShirt ?? false,
       hasTrouser: product.hasTrouser ?? false,
+      hasDress: (product as { hasDress?: boolean }).hasDress ?? false,
+      topSoldSeparately: (product as { topSoldSeparately?: boolean }).topSoldSeparately ?? false,
+      topPrice: (product as { topPrice?: number | null }).topPrice ?? null,
+      category2: (product as { category2?: string | null }).category2 ?? null,
+      categoryAr2: (product as { categoryAr2?: string | null }).categoryAr2 ?? null,
       sku: product.sku ?? null,
       stockBySize: (product as { stockBySize?: Record<string, number> | null }).stockBySize ?? null,
       outOfStock: product.outOfStock ?? false,

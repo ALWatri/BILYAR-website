@@ -62,8 +62,12 @@ export function CartDrawer() {
             <div className="space-y-8">
               {items.map((item) => {
                 const name = isRtl ? item.product.nameAr : item.product.name;
+                const p = item.product as { topPrice?: number | null };
+                const unitPrice = item.variant === "top" && p.topPrice != null ? p.topPrice : item.product.price;
+                const lineTotal = unitPrice * item.quantity;
+                const variantKey = item.variant ?? "set";
                 return (
-                  <div key={`${item.product.id}-${item.size}`} className="flex gap-4" data-testid={`cart-item-${item.product.id}`}>
+                  <div key={`${item.product.id}-${item.size}-${variantKey}`} className="flex gap-4" data-testid={`cart-item-${item.product.id}`}>
                     <div className="h-24 w-20 flex-shrink-0 overflow-hidden bg-secondary/30">
                       <img src={item.product.images[0]} alt={name} className="h-full w-full object-cover" />
                     </div>
@@ -71,23 +75,23 @@ export function CartDrawer() {
                       <div className="flex justify-between items-start">
                         <div className={isRtl ? "text-right" : "text-left"}>
                           <h3 className="font-serif font-medium">{name}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">{t.item_size}: {item.size}</p>
+                          <p className="text-sm text-muted-foreground mt-1">{t.item_size}: {item.size}{item.variant === "top" ? ` • ${isRtl ? "بلوزة فقط" : "Top only"}` : ""}</p>
                         </div>
-                        <button onClick={() => removeItem(item.product.id, item.size)} className="text-muted-foreground hover:text-destructive transition-colors" data-testid={`remove-item-${item.product.id}`}>
+                        <button onClick={() => removeItem(item.product.id, item.size, item.variant)} className="text-muted-foreground hover:text-destructive transition-colors" data-testid={`remove-item-${item.product.id}`}>
                           <X className="h-4 w-4" />
                         </button>
                       </div>
                       <div className="flex justify-between items-center">
                         <div className="flex items-center border border-border">
-                          <button onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.size)} className="p-1 hover:bg-secondary transition-colors">
+                          <button onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.size, item.variant)} className="p-1 hover:bg-secondary transition-colors">
                             <Minus className="h-3 w-3" />
                           </button>
                           <span className="text-xs w-8 text-center">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.size)} className="p-1 hover:bg-secondary transition-colors">
+                          <button onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.size, item.variant)} className="p-1 hover:bg-secondary transition-colors">
                             <Plus className="h-3 w-3" />
                           </button>
                         </div>
-                        <p className="font-medium whitespace-nowrap">{item.product.price * item.quantity} KWD</p>
+                        <p className="font-medium whitespace-nowrap">{lineTotal.toFixed(3)} KWD</p>
                       </div>
                     </div>
                   </div>

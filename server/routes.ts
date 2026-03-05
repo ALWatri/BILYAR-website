@@ -179,6 +179,11 @@ export async function registerRoutes(
     isNew: z.boolean().optional().default(false),
     hasShirt: z.boolean().optional().default(false),
     hasTrouser: z.boolean().optional().default(false),
+    hasDress: z.boolean().optional().default(false),
+    topSoldSeparately: z.boolean().optional().default(false),
+    topPrice: z.number().positive().optional().nullable(),
+    category2: z.string().optional().nullable(),
+    categoryAr2: z.string().optional().nullable(),
     sku: z.string().optional().nullable(),
     stockBySize: z.record(z.string(), z.number()).optional().nullable(),
     outOfStock: z.boolean().optional().default(false),
@@ -340,10 +345,15 @@ export async function registerRoutes(
     if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
     const order = await storage.getOrder(id);
     if (!order) return res.status(404).json({ message: "Order not found" });
+    const download = req.query.dl === "1" || req.query.download === "1";
     try {
-      const pdf = await generateInvoicePdf(order);
+      const settings = await storage.getSettings();
+      const pdf = await generateInvoicePdf(order, settings);
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `inline; filename="invoice-${order.orderNumber}.pdf"`);
+      res.setHeader(
+        "Content-Disposition",
+        download ? `attachment; filename="invoice-${order.orderNumber}.pdf"` : `inline; filename="invoice-${order.orderNumber}.pdf"`
+      );
       res.send(pdf);
     } catch (err) {
       console.error("Invoice PDF error:", err);
@@ -750,7 +760,9 @@ export async function registerRoutes(
     }
     const name = (order as any).customerNameEn || order.customerName;
     const firstName = name.split(" ")[0] || name;
-    // Prefer SITE_URL so Twilio can reliably fetch the invoice (needs public HTTPS URL)
+    const publicBase = (SITE_URL || baseUrl).replace(/\/$/, "");
+    const isPublicUrl = publicBase.startsWith("https://");
+
     console.log(`WhatsApp: sending order_received to ${order.customerPhone}`);
     const templateRes = await sendTemplate(
       order.customerPhone,
@@ -760,6 +772,23 @@ export async function registerRoutes(
     if (!templateRes.ok) {
       console.error("WhatsApp order_received template:", templateRes.error);
       return;
+    }
+
+    if (isPublicUrl) {
+      const invoiceUrl = `${publicBase}/api/orders/${orderId}/invoice-pdf`;
+      const docRes = await sendDocument(
+        order.customerPhone,
+        invoiceUrl,
+        `invoice-${order.orderNumber}.pdf`,
+        `Your order ${order.orderNumber} - BILYAR • طلبك ${order.orderNumber}`
+      );
+      if (!docRes.ok) {
+        console.warn("WhatsApp invoice PDF:", docRes.error);
+      } else {
+        console.log(`WhatsApp: Invoice PDF sent to ${order.customerPhone}`);
+      }
+    } else {
+      console.warn("WhatsApp: Skipping invoice PDF (SITE_URL not set; Twilio needs public URL to fetch PDF)");
     }
     console.log(`WhatsApp: Order ${order.orderNumber} confirmation sent to ${order.customerPhone}`);
   }

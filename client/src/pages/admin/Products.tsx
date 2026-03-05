@@ -43,10 +43,15 @@ const emptyForm = () => ({
   price: "",
   category: "",
   categoryAr: "",
+  category2: "",
+  categoryAr2: "",
   images: "",
   isNew: false,
   hasShirt: false,
   hasTrouser: false,
+  hasDress: false,
+  topSoldSeparately: false,
+  topPrice: "",
   stockBySize: [] as { size: string; qty: number }[],
   outOfStock: false,
 });
@@ -67,6 +72,7 @@ function productToForm(p: Product) {
   const stockBySize = sb && typeof sb === "object"
     ? Object.entries(sb).map(([size, qty]) => ({ size, qty: Number(qty) || 0 }))
     : [];
+  const ext = p as Product & { hasDress?: boolean; topSoldSeparately?: boolean; topPrice?: number | null; category2?: string | null; categoryAr2?: string | null };
   return {
     name: p.name,
     nameAr: p.nameAr,
@@ -75,10 +81,15 @@ function productToForm(p: Product) {
     price: String(p.price),
     category: p.category,
     categoryAr: p.categoryAr,
+    category2: ext.category2 ?? "",
+    categoryAr2: ext.categoryAr2 ?? "",
     images: p.images.join("\n"),
     isNew: p.isNew ?? false,
     hasShirt: p.hasShirt ?? false,
     hasTrouser: p.hasTrouser ?? false,
+    hasDress: ext.hasDress ?? false,
+    topSoldSeparately: ext.topSoldSeparately ?? false,
+    topPrice: ext.topPrice != null ? String(ext.topPrice) : "",
     stockBySize,
     outOfStock: (p as Product & { outOfStock?: boolean }).outOfStock ?? false,
   };
@@ -160,6 +171,11 @@ export default function Products() {
           isNew: payload.isNew,
           hasShirt: payload.hasShirt,
           hasTrouser: payload.hasTrouser,
+          hasDress: payload.hasDress,
+          topSoldSeparately: payload.topSoldSeparately,
+          topPrice: payload.topSoldSeparately && payload.topPrice ? parseFloat(payload.topPrice) : null,
+          category2: payload.category2?.trim() || null,
+          categoryAr2: payload.categoryAr2?.trim() || null,
           stockBySize: payload.stockBySize?.length
             ? Object.fromEntries(payload.stockBySize.map((r) => [r.size, r.qty]))
             : null,
@@ -201,6 +217,11 @@ export default function Products() {
           isNew: payload.isNew,
           hasShirt: payload.hasShirt,
           hasTrouser: payload.hasTrouser,
+          hasDress: payload.hasDress,
+          topSoldSeparately: payload.topSoldSeparately,
+          topPrice: payload.topSoldSeparately && payload.topPrice ? parseFloat(payload.topPrice) : null,
+          category2: payload.category2?.trim() || null,
+          categoryAr2: payload.categoryAr2?.trim() || null,
           stockBySize: payload.stockBySize?.length
             ? Object.fromEntries(payload.stockBySize.map((r) => [r.size, r.qty]))
             : null,
@@ -373,6 +394,8 @@ export default function Products() {
                 <Label>{t.price} (KWD)</Label>
                 <Input type="number" step="0.001" min="0" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} className="rounded-none" required />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t.category}</Label>
                 <select
@@ -394,27 +417,37 @@ export default function Products() {
                   ))}
                 </select>
               </div>
+              <div className="space-y-2">
+                <Label>{t.category_ar}</Label>
+                <select
+                  value={form.categoryAr}
+                  onChange={(e) => {
+                    const valueAr = e.target.value;
+                    const match = categories.find((c: any) => c.nameAr === valueAr);
+                    setForm((f) => ({
+                      ...f,
+                      categoryAr: valueAr,
+                      category: (match as any)?.name ?? f.category,
+                    }));
+                  }}
+                  className="w-full h-10 rounded-none border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">{categories.length ? "اختر الفئة" : "لا توجد فئات — أنشئها من صفحة الفئات"}</option>
+                  {categories.filter((c: any) => c.isActive !== false).map((c: any) => (
+                    <option key={c.nameAr} value={c.nameAr}>{c.nameAr}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>{t.category_ar}</Label>
-              <select
-                value={form.categoryAr}
-                onChange={(e) => {
-                  const valueAr = e.target.value;
-                  const match = categories.find((c: any) => c.nameAr === valueAr);
-                  setForm((f) => ({
-                    ...f,
-                    categoryAr: valueAr,
-                    category: (match as any)?.name ?? f.category,
-                  }));
-                }}
-                className="w-full h-10 rounded-none border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="">{categories.length ? "اختر الفئة" : "لا توجد فئات — أنشئها من صفحة الفئات"}</option>
-                {categories.filter((c: any) => c.isActive !== false).map((c: any) => (
-                  <option key={c.nameAr} value={c.nameAr}>{c.nameAr}</option>
-                ))}
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t.category_2} (optional)</Label>
+                <Input value={form.category2} onChange={(e) => setForm((f) => ({ ...f, category2: e.target.value }))} placeholder="e.g. Tops" className="rounded-none" />
+              </div>
+              <div className="space-y-2">
+                <Label>{t.category_ar_2} (اختياري)</Label>
+                <Input value={form.categoryAr2} onChange={(e) => setForm((f) => ({ ...f, categoryAr2: e.target.value }))} placeholder="مثال: قمصان" className="rounded-none" />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Stock by size</Label>
@@ -521,6 +554,20 @@ export default function Products() {
                 <Checkbox checked={form.hasTrouser} onCheckedChange={(v) => setForm((f) => ({ ...f, hasTrouser: !!v }))} />
                 <span>{t.has_trouser_measurements}</span>
               </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox checked={form.hasDress} onCheckedChange={(v) => setForm((f) => ({ ...f, hasDress: !!v }))} />
+                <span>{t.has_dress_measurements}</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox checked={form.topSoldSeparately} onCheckedChange={(v) => setForm((f) => ({ ...f, topSoldSeparately: !!v }))} />
+                <span>{t.top_sold_separately}</span>
+              </label>
+              {form.topSoldSeparately && (
+                <div className="flex items-center gap-2">
+                  <Label>{t.top_price}</Label>
+                  <Input type="number" step="0.001" min={0} value={form.topPrice} onChange={(e) => setForm((f) => ({ ...f, topPrice: e.target.value }))} className="rounded-none w-24" placeholder="0" />
+                </div>
+              )}
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox checked={form.outOfStock} onCheckedChange={(v) => setForm((f) => ({ ...f, outOfStock: !!v }))} />
                 <span>{t.out_of_stock}</span>

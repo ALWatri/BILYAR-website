@@ -57,6 +57,9 @@ export const translations = {
       custom_measurements: "Custom Measurements (inch)",
       shirt_measurements: "Shirt Measurements",
       trouser_measurements: "Trouser Measurements",
+      dress_measurements: "Dress Measurements",
+      full_set: "Full Set",
+      top_only: "Top Only",
       length: "Length (inch)",
       shoulder: "Shoulder (inch)",
       sleeve_length: "Sleeve Length (inch)",
@@ -143,6 +146,7 @@ export const translations = {
       subtotal: "Subtotal",
       shipping: "Shipping",
       print_invoice: "Print Invoice",
+      download_pdf: "Download PDF",
       update_status: "Update Status",
       since_last_week: "+15 since last week",
       manage_products: "Manage your product catalog.",
@@ -193,6 +197,11 @@ export const translations = {
       upload_images: "Upload images",
       has_shirt_measurements: "Shirt measurements",
       has_trouser_measurements: "Trouser measurements",
+      has_dress_measurements: "Dress measurements",
+      top_sold_separately: "Top can be sold separately",
+      top_price: "Top price (KWD)",
+      category_2: "Second category (optional)",
+      category_ar_2: "Second category Arabic",
       sku: "SKU",
       sku_help: "Leave empty or 0 to hide size selector on product page",
       out_of_stock: "Out of stock",
@@ -245,7 +254,8 @@ export const translations = {
       failed_desc: "Your payment could not be processed. Please try again.",
       order_number: "Order Number",
       continue_shopping: "Continue Shopping",
-      try_again: "Try Again"
+      try_again: "Try Again",
+      download_invoice: "Download invoice PDF"
     }
   },
   ar: {
@@ -306,6 +316,9 @@ export const translations = {
       custom_measurements: "القياسات الخاصة (إنش)",
       shirt_measurements: "قياسات القميص",
       trouser_measurements: "قياسات البنطلون",
+      dress_measurements: "قياسات الفستان",
+      full_set: "الطقم كامل",
+      top_only: "البلوزة فقط",
       length: "الطول (إنش)",
       shoulder: "الكتف (إنش)",
       sleeve_length: "طول الكم (إنش)",
@@ -392,6 +405,7 @@ export const translations = {
       subtotal: "المجموع الفرعي",
       shipping: "التوصيل",
       print_invoice: "طباعة الفاتورة",
+      download_pdf: "تحميل PDF",
       update_status: "تحديث الحالة",
       since_last_week: "+15 منذ الأسبوع الماضي",
       manage_products: "إدارة كتالوج المنتجات.",
@@ -442,6 +456,11 @@ export const translations = {
       upload_images: "رفع الصور",
       has_shirt_measurements: "مقاسات القميص",
       has_trouser_measurements: "مقاسات البنطلون",
+      has_dress_measurements: "قياسات الفستان",
+      top_sold_separately: "البلوزة تباع منفصلة",
+      top_price: "سعر البلوزة (د.ك)",
+      category_2: "الفئة الثانية (اختياري)",
+      category_ar_2: "الفئة الثانية بالعربي",
       sku: "رمز المنتج",
       sku_help: "اتركه فارغاً أو 0 لإخفاء اختيار المقاس",
       out_of_stock: "نفذ من المخزون",
@@ -494,7 +513,8 @@ export const translations = {
       failed_desc: "لم يتم معالجة الدفع. يرجى المحاولة مرة أخرى.",
       order_number: "رقم الطلب",
       continue_shopping: "متابعة التسوق",
-      try_again: "حاولي مرة أخرى"
+      try_again: "حاولي مرة أخرى",
+      download_invoice: "تحميل إيصال الدفع"
     }
   }
 };

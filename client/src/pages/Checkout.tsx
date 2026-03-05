@@ -94,16 +94,21 @@ export default function Checkout() {
           city: form.city,
           country: form.country,
         },
-        items: items.map(item => ({
-          productId: item.product.id,
-          productName: item.product.name,
-          quantity: item.quantity,
-          price: item.product.price,
-          image: item.product.images[0],
-          size: item.size,
-          measurements: item.measurements,
-          notes: item.notes,
-        })),
+        items: items.map(item => {
+          const p = item.product as { topPrice?: number | null };
+          const price = item.variant === "top" && p.topPrice != null ? p.topPrice : item.product.price;
+          const suffix = item.variant === "top" ? " (Top only)" : "";
+          return {
+            productId: item.product.id,
+            productName: item.product.name + suffix,
+            quantity: item.quantity,
+            price,
+            image: item.product.images[0],
+            size: item.size,
+            measurements: item.measurements,
+            notes: item.notes,
+          };
+        }),
         paymentMethod,
       });
 
@@ -370,18 +375,21 @@ export default function Checkout() {
                   <div className="space-y-4">
                     {items.map(item => {
                       const name = isRtl ? item.product.nameAr : item.product.name;
+                      const cp = item.product as { topPrice?: number | null };
+                      const unitPrice = item.variant === "top" && cp.topPrice != null ? cp.topPrice : item.product.price;
+                      const lineTotal = unitPrice * item.quantity;
                       return (
-                        <div key={`${item.product.id}-${item.size}`} className="flex gap-3" data-testid={`checkout-item-${item.product.id}`}>
+                        <div key={`${item.product.id}-${item.size}-${item.variant ?? "set"}`} className="flex gap-3" data-testid={`checkout-item-${item.product.id}`}>
                           <div className="h-16 w-14 flex-shrink-0 overflow-hidden bg-secondary/30">
                             <img src={item.product.images[0]} alt={name} className="h-full w-full object-cover" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{name}</p>
+                            <p className="font-medium text-sm truncate">{name}{item.variant === "top" ? ` (${isRtl ? "بلوزة فقط" : "Top only"})` : ""}</p>
                             <p className="text-xs text-muted-foreground">
                               {isRtl ? "المقاس" : "Size"}: {item.size} | {isRtl ? "الكمية" : "Qty"}: {item.quantity}
                             </p>
                           </div>
-                          <p className="text-sm font-medium whitespace-nowrap">{(item.product.price * item.quantity).toFixed(3)} KWD</p>
+                          <p className="text-sm font-medium whitespace-nowrap">{lineTotal.toFixed(3)} KWD</p>
                         </div>
                       );
                     })}

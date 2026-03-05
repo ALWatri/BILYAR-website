@@ -208,29 +208,9 @@ export default function Orders() {
   const itemNotesForDriver = (item: OrderWithItems["items"][0]) =>
     (item as { notesEn?: string | null }).notesEn ?? item.notes;
 
-  const printInvoice = (order: OrderWithItems) => {
-    const win = window.open("", "_blank");
-    if (!win) return;
-    const itemsHtml = order.items.map(
-      (i) => `<tr><td>${i.productName}</td><td>${i.quantity}</td><td>${i.size || "—"}</td><td>${(i.price * i.quantity).toFixed(3)} KWD</td></tr>`
-    ).join("");
-    win.document.write(`
-      <!DOCTYPE html><html><head><title>Invoice ${order.orderNumber}</title>
-      <style>body{font-family:sans-serif;padding:24px;max-width:600px;margin:0 auto}
-      table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:left}
-      h1{margin-bottom:8px}.meta{color:#666;margin-bottom:24px}</style></head><body>
-      <h1>Invoice - ${order.orderNumber}</h1>
-      <div class="meta">${order.createdAt} | ${forDriver(order).name} | ${order.customerPhone}</div>
-      <h3>Shipping</h3>
-      <p>${forDriver(order).address}<br>${forDriver(order).city}, ${forDriver(order).country}</p>
-      <h3>Items</h3>
-      <table><thead><tr><th>Product</th><th>Qty</th><th>Size</th><th>Total</th></tr></thead><tbody>${itemsHtml}</tbody></table>
-      <p style="margin-top:16px"><strong>Subtotal:</strong> ${(order.total - order.shippingCost).toFixed(3)} KWD | <strong>Shipping:</strong> ${order.shippingCost} KWD | <strong>Total:</strong> ${order.total} KWD</p>
-      </body></html>
-    `);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 250);
+  const openInvoicePdf = (order: OrderWithItems, download = false) => {
+    const url = `/api/orders/${order.id}/invoice-pdf${download ? "?dl=1" : ""}`;
+    window.open(url, "_blank");
   };
 
   const printDeliverySlip = (order: OrderWithItems) => {
@@ -522,8 +502,11 @@ export default function Orders() {
                           <Button variant="outline" onClick={() => startEdit(order)} className="gap-2">
                             <Pencil className="h-4 w-4" /> {t.edit}
                           </Button>
-                          <Button variant="outline" onClick={() => printInvoice(order)} className="gap-2">
+                          <Button variant="outline" onClick={() => openInvoicePdf(order)} className="gap-2">
                             <Printer className="h-4 w-4" /> {t.print_invoice}
+                          </Button>
+                          <Button variant="outline" onClick={() => openInvoicePdf(order, true)} className="gap-2">
+                            <FileDown className="h-4 w-4" /> {t.download_pdf}
                           </Button>
                           <Button variant="outline" onClick={() => printDeliverySlip(order)} className="gap-2">
                             <Truck className="h-4 w-4" /> Delivery Slip

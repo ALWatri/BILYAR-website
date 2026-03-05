@@ -15,6 +15,7 @@ export interface CartItem {
   product: Product;
   quantity: number;
   size: string;
+  variant?: "set" | "top";
   measurements?: Record<string, string>;
   notes?: string;
 }
@@ -61,11 +62,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if ((newItem.product as Product & { outOfStock?: boolean }).outOfStock) {
       return;
     }
+    const v = newItem.variant ?? "set";
     setItems(prev => {
-      const existing = prev.find(i => i.product.id === newItem.product.id && i.size === newItem.size);
+      const existing = prev.find(i => i.product.id === newItem.product.id && i.size === newItem.size && (i.variant ?? "set") === v);
       if (existing) {
         return prev.map(i =>
-          i.product.id === newItem.product.id && i.size === newItem.size
+          i.product.id === newItem.product.id && i.size === newItem.size && (i.variant ?? "set") === v
             ? { ...i, quantity: i.quantity + newItem.quantity }
             : i
         );
@@ -74,20 +76,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const removeItem = (productId: number, size?: string) => {
-    setItems(prev => prev.filter(i => !(i.product.id === productId && (!size || i.size === size))));
+  const removeItem = (productId: number, size?: string, variant?: "set" | "top") => {
+    setItems(prev => prev.filter(i =>
+      !(i.product.id === productId && (!size || i.size === size) && (!variant || (i.variant ?? "set") === variant))
+    ));
   };
 
-  const updateQuantity = (productId: number, quantity: number, size?: string) => {
+  const updateQuantity = (productId: number, quantity: number, size?: string, variant?: "set" | "top") => {
     if (quantity < 1) return;
     setItems(prev => prev.map(i =>
-      i.product.id === productId && (!size || i.size === size) ? { ...i, quantity } : i
+      i.product.id === productId && (!size || i.size === size) && (!variant || (i.variant ?? "set") === variant)
+        ? { ...i, quantity }
+        : i
     ));
   };
 
   const clearCart = () => setItems([]);
 
-  const subtotal = items.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+  const subtotal = items.reduce((acc, item) => {
+    const p = item.product as Product & { topPrice?: number | null };
+    const price = item.variant === "top" && p.topPrice != null ? p.topPrice : item.product.price;
+    return acc + price * item.quantity;
+  }, 0);
   const itemCount = items.reduce((acc, item) => acc + item.quantity, 0);
   // Shipping rules:
   // - Free delivery when cart has 2+ items
