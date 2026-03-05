@@ -962,7 +962,6 @@ export async function registerRoutes(
         if (order && order.paymentStatus !== "paid") {
           await storage.updateOrderPayment(orderId, chargeId, "paid");
           await storage.updateOrderStatus(orderId, "Paid");
-          sendOrderReceivedWhatsApp(orderId, getBaseUrl(req)).catch((err) => console.error("WhatsApp order_received:", err));
         }
       } catch (e) {
         console.error("Tap webhook error:", e);
@@ -1086,8 +1085,6 @@ export async function registerRoutes(
         if (status.toLowerCase() === "captured") {
           await storage.updateOrderPayment(order.id, orderRef || "", "paid");
           await storage.updateOrderStatus(order.id, "Paid");
-          const base = SITE_URL || "https://" + (req.headers["x-forwarded-host"] || req.headers.host || "localhost");
-          sendOrderReceivedWhatsApp(order.id, base).catch((err) => console.error("WhatsApp order_received:", err));
           console.log(`Deema webhook: Order ${order.id} payment captured`);
         } else if (status.toLowerCase() === "expired" || status.toLowerCase() === "cancelled") {
           // Don't overwrite if we already marked as paid (e.g. from callback) so successful payments aren't flipped to failed
