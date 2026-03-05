@@ -31,9 +31,8 @@ function uniqueFilename(ext: string): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}${ext}`;
 }
 
-// Test: https://apitest.myfatoorah.com/ | Live Kuwait: https://api.myfatoorah.com/
-const MYFATOORAH_BASE_URL = process.env.MYFATOORAH_BASE_URL || "https://apitest.myfatoorah.com";
-const MYFATOORAH_API_KEY = process.env.MYFATOORAH_API_KEY || "";
+// Tap Payments: Test keys (sk_test_...) | Live keys (sk_live_...) when ready
+const TAP_API_KEY = process.env.TAP_API_KEY || "";
 // Sandbox: https://sandbox-api.deema.me or https://staging-api.deema.me. Live: https://api.deema.me
 const DEEMA_BASE_URL = process.env.DEEMA_BASE_URL || "https://sandbox-api.deema.me";
 const DEEMA_API_KEY = process.env.DEEMA_API_KEY || "";
@@ -308,7 +307,7 @@ export async function registerRoutes(
       measurements: z.record(z.string()).optional(),
       notes: z.string().optional(),
     })).min(1),
-    paymentMethod: z.enum(["myfatoorah", "deema", "manual"]).optional().default("myfatoorah"),
+    paymentMethod: z.enum(["tap", "deema", "manual"]).optional().default("tap"),
   });
 
   app.post("/api/orders", async (req, res) => {
@@ -385,7 +384,7 @@ export async function registerRoutes(
           customerCityEn: customerCityEn !== data.customer.city ? customerCityEn : null,
           customerCountryEn: customerCountryEn !== data.customer.country ? customerCountryEn : null,
           status: "Pending",
-          paymentMethod: data.paymentMethod ?? "myfatoorah",
+          paymentMethod: data.paymentMethod ?? "tap",
           paymentStatus: isManual ? "manual" : "pending",
           total,
           shippingCost,
@@ -750,38 +749,39 @@ export async function registerRoutes(
   // ===== PAYMENT STATUS CHECK =====
   app.get("/api/payment/status", async (_req, res) => {
     res.json({
-      myfatoorah: !!MYFATOORAH_API_KEY,
+      tap: !!TAP_API_KEY,
       deema: !!DEEMA_API_KEY,
       whatsapp: isWhatsAppConfigured(),
     });
   });
 
-  // ===== MYFATOORAH PAYMENT =====
-  app.post("/api/payment/myfatoorah/initiate", async (req, res) => {
+  async function parseJsonOrThrow(response: Response, context: string): Promise<any> {
+    const contentType = response.headers.get("content-type") || "";
+    const text = await response.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      const snippet = text.length > 800 ? `${text.slice(0, 800)}…` : text;
+      throw new Error(
+        `${context}: Non-JSON response (status ${response.status}, content-type "${contentType}"). Body: ${snippet || "<empty>"}`
+      );
+    }
+  }
+
+  // ===== TAP PAYMENTS (Card / KNET) =====
+  // Docs: https://developers.tap.company/reference/create-a-charge
+  app.post("/api/payment/tap/initiate", async (req, res) => {
     try {
       const { orderId } = req.body;
       const order = await storage.getOrder(orderId);
       if (!order) return res.status(404).json({ message: "Order not found" });
 
-      if (!MYFATOORAH_API_KEY) {
+      if (!TAP_API_KEY) {
         return res.json({
           demo: true,
           paymentUrl: `${getBaseUrl(req)}/order/success?orderId=${orderId}&demo=true`
         });
       }
-
-      const parseJsonOrThrow = async (response: Response, context: string) => {
-        const contentType = response.headers.get("content-type") || "";
-        const text = await response.text();
-        try {
-          return JSON.parse(text);
-        } catch {
-          const snippet = text.length > 800 ? `${text.slice(0, 800)}…` : text;
-          throw new Error(
-            `${context}: Non-JSON response (status ${response.status}, content-type "${contentType}"). Body: ${snippet || "<empty>"}`
-          );
-        }
-      };
 
       if (!order.customerName?.trim()) {
         return res.status(400).json({ message: "Customer name is required" });
@@ -801,45 +801,48 @@ export async function registerRoutes(
       }
 
       const baseUrl = getBaseUrl(req);
+      const redirectUrl = `${baseUrl}/api/payment/tap/callback?orderId=${orderId}`;
 
-      const response = await fetch(`${MYFATOORAH_BASE_URL}/v2/ExecutePayment`, {
+      const chargePayload = {
+        amount: Math.round(order.total * 1000) / 1000,
+        currency: "KWD",
+        customer: {
+          first_name: order.customerName.split(/\s+/)[0] || "Customer",
+          last_name: order.customerName.split(/\s+/).slice(1).join(" ") || ".",
+          email: order.customerEmail,
+          phone: { country_code: 965, number: parseInt(customerMobile, 10) },
+        },
+        source: { id: "src_all" },
+        redirect: { url: redirectUrl },
+        post: { url: `${baseUrl}/api/payment/tap/webhook` },
+        reference: { order: order.orderNumber, transaction: `bilyar-${orderId}` },
+        description: `Order ${order.orderNumber}`,
+        metadata: { udf1: String(orderId) },
+      };
+
+      const response = await fetch("https://api.tap.company/v2/charges", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${MYFATOORAH_API_KEY}`,
+          "Authorization": `Bearer ${TAP_API_KEY}`,
         },
-        body: JSON.stringify({
-          InvoiceValue: order.total,
-          CurrencyIso: "KWD",
-          CustomerName: order.customerName,
-          CustomerEmail: order.customerEmail,
-          MobileCountryCode: "+965",
-          CustomerMobile: customerMobile,
-          CallBackUrl: `${baseUrl}/api/payment/myfatoorah/callback?orderId=${orderId}`,
-          ErrorUrl: `${baseUrl}/api/payment/myfatoorah/callback?orderId=${orderId}&error=true`,
-          Language: "en",
-          CustomerReference: order.orderNumber,
-          InvoiceItems: order.items.map(item => ({
-            ItemName: item.productName,
-            Quantity: item.quantity,
-            UnitPrice: item.price,
-          })),
-        }),
+        body: JSON.stringify(chargePayload),
       });
 
-      const result = await parseJsonOrThrow(response, "MyFatoorah ExecutePayment");
+      const result = await parseJsonOrThrow(response, "Tap Create Charge");
 
-      if (result.IsSuccess) {
-        await storage.updateOrderPayment(orderId, result.Data.InvoiceId.toString(), "initiated");
-        return res.json({
-          paymentUrl: result.Data.PaymentURL,
-          invoiceId: result.Data.InvoiceId,
-        });
-      } else {
-        return res.status(400).json({ message: result.Message || "Payment initiation failed" });
+      const chargeId = result?.id;
+      const paymentUrl = result?.transaction?.url;
+
+      if (chargeId && paymentUrl) {
+        await storage.updateOrderPayment(orderId, chargeId, "initiated");
+        return res.json({ paymentUrl, chargeId });
       }
+
+      const errMsg = result?.errors?.[0]?.description || result?.message || "Payment initiation failed";
+      return res.status(400).json({ message: errMsg });
     } catch (error: any) {
-      console.error("MyFatoorah error:", error);
+      console.error("Tap error:", error);
       return res.status(500).json({
         message: "Payment service error",
         details: process.env.NODE_ENV === "production" ? undefined : String(error?.message || error),
@@ -847,57 +850,60 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/payment/myfatoorah/callback", async (req, res) => {
-    const { orderId, paymentId, error } = req.query;
+  app.get("/api/payment/tap/callback", async (req, res) => {
+    const { orderId, tap_id } = req.query;
     const baseUrl = getBaseUrl(req);
     const id = parseInt(orderId as string);
 
-    if (error) {
-      await storage.updateOrderPayment(id, paymentId as string || "", "failed");
-      await storage.updateOrderStatus(id, "Cancelled");
-      return res.redirect(`${baseUrl}/order/failed?orderId=${orderId}`);
+    if (!orderId || isNaN(id)) {
+      return res.redirect(`${baseUrl}/order/failed`);
     }
 
     try {
-      if (MYFATOORAH_API_KEY && paymentId) {
-        const parseJsonOrThrow = async (response: Response, context: string) => {
-          const contentType = response.headers.get("content-type") || "";
-          const text = await response.text();
-          try {
-            return JSON.parse(text);
-          } catch {
-            const snippet = text.length > 800 ? `${text.slice(0, 800)}…` : text;
-            throw new Error(
-              `${context}: Non-JSON response (status ${response.status}, content-type "${contentType}"). Body: ${snippet || "<empty>"}`
-            );
-          }
-        };
-
-        const statusRes = await fetch(`${MYFATOORAH_BASE_URL}/v2/GetPaymentStatus`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${MYFATOORAH_API_KEY}`,
-          },
-          body: JSON.stringify({ Key: paymentId, KeyType: "PaymentId" }),
+      if (TAP_API_KEY && tap_id) {
+        const chargeRes = await fetch(`https://api.tap.company/v2/charges/${tap_id}`, {
+          headers: { "Authorization": `Bearer ${TAP_API_KEY}` },
         });
-        const statusResult = await parseJsonOrThrow(statusRes, "MyFatoorah GetPaymentStatus");
+        const charge = await parseJsonOrThrow(chargeRes, "Tap Get Charge");
 
-        if (statusResult.IsSuccess && statusResult.Data?.InvoiceStatus === "Paid") {
-          await storage.updateOrderPayment(id, paymentId as string, "paid");
+        if (charge?.status === "CAPTURED") {
+          await storage.updateOrderPayment(id, String(tap_id), "paid");
           await storage.updateOrderStatus(id, "Paid");
           sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
           return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
         }
+        if (charge?.status === "DECLINED" || charge?.status === "CANCELLED" || charge?.status === "FAILED") {
+          await storage.updateOrderPayment(id, String(tap_id), "failed");
+          await storage.updateOrderStatus(id, "Cancelled");
+          return res.redirect(`${baseUrl}/order/failed?orderId=${orderId}`);
+        }
       }
 
-      await storage.updateOrderPayment(id, paymentId as string || "", "paid");
-      await storage.updateOrderStatus(id, "Paid");
-      sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
-      return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
+      return res.redirect(`${baseUrl}/order/failed?orderId=${orderId}`);
     } catch (err) {
-      console.error("MyFatoorah callback error:", err);
-      return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
+      console.error("Tap callback error:", err);
+      return res.redirect(`${baseUrl}/order/failed?orderId=${orderId}`);
+    }
+  });
+
+  app.post("/api/payment/tap/webhook", express.json(), async (req, res) => {
+    res.status(200).send("OK");
+    const body = req.body;
+    const chargeId = body?.id;
+    const status = body?.status;
+    const orderId = body?.metadata?.udf1 ? parseInt(body.metadata.udf1, 10) : null;
+
+    if (chargeId && orderId && !isNaN(orderId) && status === "CAPTURED") {
+      try {
+        const order = await storage.getOrder(orderId);
+        if (order && order.paymentStatus !== "paid") {
+          await storage.updateOrderPayment(orderId, chargeId, "paid");
+          await storage.updateOrderStatus(orderId, "Paid");
+          sendOrderReceivedWhatsApp(orderId, getBaseUrl(req)).catch((err) => console.error("WhatsApp order_received:", err));
+        }
+      } catch (e) {
+        console.error("Tap webhook error:", e);
+      }
     }
   });
 

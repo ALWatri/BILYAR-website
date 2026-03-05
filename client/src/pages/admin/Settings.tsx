@@ -35,7 +35,7 @@ export default function Settings() {
     return () => observer.disconnect();
   }, []);
 
-  const { data: paymentStatus } = useQuery<{ myfatoorah: boolean; deema: boolean }>({
+  const { data: paymentStatus } = useQuery<{ tap: boolean; deema: boolean }>({
     queryKey: ["/api/payment/status"],
   });
 
@@ -172,17 +172,17 @@ export default function Settings() {
                   <CreditCard className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="font-medium">{t.myfatoorah_status}</p>
+                  <p className="font-medium">{t.tap_status}</p>
                   <p className="text-sm text-gray-500">{isRtl ? "بطاقة / كي نت" : "Card / KNET"}</p>
                 </div>
               </div>
               <Badge variant="outline" className={cn(
                 "rounded-sm gap-1",
-                paymentStatus?.myfatoorah 
+                paymentStatus?.tap 
                   ? "bg-green-100 text-green-800 border-green-200" 
                   : "bg-red-100 text-red-800 border-red-200"
               )}>
-                {paymentStatus?.myfatoorah ? (
+                {paymentStatus?.tap ? (
                   <><CheckCircle className="h-3 w-3" /> {t.connected}</>
                 ) : (
                   <><XCircle className="h-3 w-3" /> {t.not_connected}</>

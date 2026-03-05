@@ -79,6 +79,6 @@ Then copy the single line it prints and paste that as the value for `FIREBASE_SE
 
 - Visit **https://yourdomain.com** to see the store.
 - Visit **https://yourdomain.com/admin** and log in with `admin@bilyar.com` / `admin` to manage orders and products.
-- For real payments (Deema/MyFatoorah), add the API keys in the same Environment/Secrets section and, for Deema, set the webhook URL to `https://yourdomain.com/api/payment/deema/webhook` in the Deema portal.
+- For real payments (Deema/Tap), add the API keys in the same Environment/Secrets section and, for Deema, set the webhook URL to `https://yourdomain.com/api/payment/deema/webhook` in the Deema portal.
 
 If you tell me which option you use (Replit, Render, or Railway), I can give you the exact clicks for that one.

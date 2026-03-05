@@ -23,7 +23,7 @@ BILYAR is a premium luxury women's fashion e-commerce website built for the Kuwa
 
 ### 2. Payment Integration
 
-- **MyFatoorah**: Card/KNET payment gateway integration (backend ready, needs production API key)
+- **Tap Payments**: Card/KNET payment gateway integration (backend ready, needs live API key)
 - **Deema BNPL**: Buy Now Pay Later integration per [Deema’s guide](https://docs.deema.me/docs/getting-started-with-deema-bnpl-solution):
   - Sandbox: `DEEMA_BASE_URL=https://staging-api.deema.me`. Live: `https://api.deema.me`
   - Webhook at `/api/payment/deema/webhook` with configurable secret (`DEEMA_WEBHOOK_SECRET`) and optional header name (`DEEMA_WEBHOOK_HEADER`); returns 200 OK for delivery confirmation
@@ -38,7 +38,7 @@ BILYAR is a premium luxury women's fashion e-commerce website built for the Kuwa
 - **Orders Management**: View all orders with full details, line items, custom measurements, customer notes. Update order status (Pending, Processing, Shipped, Delivered, Cancelled)
 - **Products Management**: View all products in table format with images, bilingual names, categories, prices, availability status
 - **Customers Management**: Customer profiles derived from order data, showing total spent, order count, last order date, loyalty badges (Loyal/Regular/New based on spending and order history), click-to-view order history
-- **Settings**: Store configuration (name, currency, contact), payment gateway connection status (shows real-time whether MyFatoorah/Deema API keys are configured), shipping settings (free delivery threshold)
+- **Settings**: Store configuration (name, currency, contact), payment gateway connection status (shows real-time whether Tap/Deema API keys are configured), shipping settings (free delivery threshold)
 
 ### 4. Bilingual Support (English/Arabic)
 
@@ -110,8 +110,8 @@ When `FIREBASE_PROJECT_ID` is set, the app uses **Firestore** instead of Postgre
 | GET | /api/settings | Get store settings (public) |
 | PATCH | /api/settings | Update store settings |
 | GET | /api/payment/status | Check payment gateway connection status |
-| POST | /api/payment/myfatoorah/initiate | Initiate MyFatoorah payment |
-| GET | /api/payment/myfatoorah/callback | MyFatoorah callback handler |
+| POST | /api/payment/tap/initiate | Initiate Tap payment |
+| GET | /api/payment/tap/callback | Tap callback handler |
 | POST | /api/payment/deema/initiate | Initiate Deema BNPL payment |
 | GET | /api/payment/deema/callback | Deema callback handler |
 | POST | /api/payment/deema/webhook | Deema webhook for payment updates |
@@ -129,7 +129,7 @@ When `FIREBASE_PROJECT_ID` is set, the app uses **Firestore** instead of Postgre
 | DEEMA_API_KEY | Deema BNPL API key | From Merchant Portal (sandbox/live) |
 | DEEMA_BASE_URL | Sandbox: staging-api.deema.me; Live: api.deema.me | Optional, default Sandbox |
 | DEEMA_WEBHOOK_SECRET | Same value as in Merchant Portal → Webhook Headers | Recommended |
-| MYFATOORAH_API_KEY | MyFatoorah payment API key | Not yet configured |
+| TAP_API_KEY | Tap Payments API key | Not yet configured |
 
 ---
 
@@ -203,7 +203,7 @@ scripts/seed.ts        - Database seeding with sample products
 ## What's Not Yet Implemented (Future Enhancements)
 
 1. **Real admin authentication** - Currently uses mock localStorage auth
-2. **MyFatoorah production key** - Backend is ready, just needs the API key
+2. **Tap Payments live key** - Backend is ready, add `sk_live_xxx` when you receive it
 3. **Order email notifications** - Send confirmation emails to customers
 4. **Wishlist** - Save favorite products
 5. **Inventory management** - Stock tracking per size

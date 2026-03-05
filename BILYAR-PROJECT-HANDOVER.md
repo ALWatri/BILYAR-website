@@ -23,7 +23,7 @@ BILYAR is a premium luxury women's fashion e-commerce website built for the Kuwa
 
 ### 2. Payment Integration
 
-- **MyFatoorah**: Card/KNET payment gateway integration (backend ready, needs production API key)
+- **Tap Payments**: Card/KNET payment gateway integration (backend ready, needs live API key)
 - **Deema BNPL**: Buy Now Pay Later installment payment integration with:
   - Sandbox API configured (endpoint: `https://staging-api.deema.me/api/merchant/v1/purchase`)
   - Webhook handler at `/api/payment/deema/webhook` with secret verification (`x-webhook-secret: bilyar-deema-webhook-2026`)
@@ -38,7 +38,7 @@ BILYAR is a premium luxury women's fashion e-commerce website built for the Kuwa
 - **Orders Management**: View all orders with full details, line items, custom measurements, customer notes. Update order status (Pending, Processing, Shipped, Delivered, Cancelled)
 - **Products Management**: View all products in table format with images, bilingual names, categories, prices, availability status
 - **Customers Management**: Customer profiles derived from order data, showing total spent, order count, last order date, loyalty badges (Loyal/Regular/New based on spending and order history), click-to-view order history
-- **Settings**: Store configuration (name, currency, contact), payment gateway connection status (shows real-time whether MyFatoorah/Deema API keys are configured), shipping settings (free delivery threshold)
+- **Settings**: Store configuration (name, currency, contact), payment gateway connection status (shows real-time whether Tap/Deema API keys are configured), shipping settings (free delivery threshold)
 
 ### 4. Bilingual Support (English/Arabic)
 
@@ -99,8 +99,8 @@ Products can be flagged as having shirt and/or trouser measurements:
 | PATCH | /api/orders/:id/status | Update order status |
 | GET | /api/customers | List customers (aggregated from orders) |
 | GET | /api/payment/status | Check payment gateway connection status |
-| POST | /api/payment/myfatoorah/initiate | Initiate MyFatoorah payment |
-| GET | /api/payment/myfatoorah/callback | MyFatoorah callback handler |
+| POST | /api/payment/tap/initiate | Initiate Tap payment |
+| GET | /api/payment/tap/callback | Tap callback handler |
 | POST | /api/payment/deema/initiate | Initiate Deema BNPL payment |
 | GET | /api/payment/deema/callback | Deema callback handler |
 | POST | /api/payment/deema/webhook | Deema webhook for payment updates |
@@ -114,7 +114,7 @@ Products can be flagged as having shirt and/or trouser measurements:
 | DATABASE_URL | PostgreSQL connection string | Configured |
 | DEEMA_API_KEY | Deema BNPL API key | Configured (sandbox) |
 | DEEMA_WIDGET_KEY | Deema widget key | Configured |
-| MYFATOORAH_API_KEY | MyFatoorah payment API key | Not yet configured |
+| TAP_API_KEY | Tap Payments API key | Not yet configured |
 
 ---
 
@@ -184,7 +184,7 @@ scripts/seed.ts        - Database seeding with sample products
 ## What's Not Yet Implemented (Future Enhancements)
 
 1. **Real admin authentication** - Currently uses mock localStorage auth
-2. **MyFatoorah production key** - Backend is ready, just needs the API key
+2. **Tap Payments live key** - Backend is ready, add `sk_live_xxx` when you receive it
 3. **Product CRUD in admin** - Add/Edit/Delete products from admin panel (UI placeholders exist)
 4. **Settings persistence** - Admin settings save to backend (currently UI-only)
 5. **Order email notifications** - Send confirmation emails to customers

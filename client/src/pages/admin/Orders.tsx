@@ -194,7 +194,7 @@ export default function Orders() {
 
   const paymentMethodLabel = (method: string | null | undefined) => {
     if (method === "deema") return "Deema (BNPL)";
-    if (method === "myfatoorah") return "MyFatoorah";
+    if (method === "tap" || method === "myfatoorah") return "Tap (Card/KNET)";
     return method || "—";
   };
 

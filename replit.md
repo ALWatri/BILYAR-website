@@ -58,8 +58,8 @@ migrations/      - Drizzle-generated migration files
 - `GET /api/orders/:id` - Get single order with items
 - `POST /api/orders` - Create new order with customer info, line items, and payment method
 - `PATCH /api/orders/:id/status` - Update order status
-- `POST /api/payment/myfatoorah/initiate` - Initiate MyFatoorah card/KNET payment (demo mode without API key)
-- `GET /api/payment/myfatoorah/callback` - MyFatoorah payment callback handler
+- `POST /api/payment/tap/initiate` - Initiate Tap card/KNET payment (demo mode without API key)
+- `GET /api/payment/tap/callback` - Tap payment callback handler
 - `POST /api/payment/deema/initiate` - Initiate Deema BNPL installment payment (demo mode without API key)
 - `GET /api/payment/deema/callback` - Deema payment callback handler
 - `POST /api/payment/deema/webhook` - Deema webhook for payment status updates

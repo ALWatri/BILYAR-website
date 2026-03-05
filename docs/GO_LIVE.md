@@ -63,9 +63,8 @@ PORT=5000
 **Payments (optional for demo; required for real payments):**
 
 ```bash
-# MyFatoorah (Card / KNET) – get production key from MyFatoorah
-MYFATOORAH_API_KEY=your_live_key
-MYFATOORAH_BASE_URL=https://api.myfatoorah.com
+# Tap Payments (Card / KNET) – use your live key when ready
+TAP_API_KEY=sk_live_xxx
 
 # Deema BNPL – switch to Live after Deema approves
 DEEMA_API_KEY=your_live_deema_key
@@ -84,7 +83,7 @@ Set this in the [Deema Merchant Portal](https://docs.deema.me/docs/getting-start
 
 ## 4. Payments go-live
 
-- **MyFatoorah:** Add your **production** API key and set `MYFATOORAH_BASE_URL=https://api.myfatoorah.com` (or the URL they give you).
+- **Tap Payments:** Add your **live** API key (`sk_live_xxx`) when Tap provides it. Until then, use test key (`sk_test_xxx`) or leave empty for demo mode.
 - **Deema:** Follow `docs/DEEMA_INTEGRATION.md`: request Live activation, then set Live `DEEMA_API_KEY`, `DEEMA_BASE_URL=https://api.deema.me`, and the same `DEEMA_WEBHOOK_SECRET` as in the Live portal. Webhook URL must be `https://yourdomain.com/api/payment/deema/webhook`. Do one test transaction and confirm the webhook is received.
 
 ---
@@ -96,7 +95,7 @@ Set this in the [Deema Merchant Portal](https://docs.deema.me/docs/getting-start
 | Homepage loads | Open `https://yourdomain.com` |
 | Shop & product pages | Browse and open a product |
 | Add to cart & checkout | Add item, go to checkout, fill form |
-| Place test order | Use Deema or MyFatoorah (or demo mode); confirm redirect to success/failure |
+| Place test order | Use Deema or Tap (or demo mode); confirm redirect to success/failure |
 | Admin | Open `https://yourdomain.com/admin`, log in (admin@bilyar.com / admin), check Orders, Products, Settings |
 | Deema webhook | After a Deema payment, check host logs for “Deema webhook received” and that order status updated |
 | HTTPS everywhere | No mixed content; all links use `https://` |
@@ -120,7 +119,7 @@ Set this in the [Deema Merchant Portal](https://docs.deema.me/docs/getting-start
 | Domain | Point DNS (A/CNAME) to host; add domain in host dashboard. |
 | Env | Set `NODE_ENV`, `PORT`, DB vars, and payment keys (live when ready). |
 | Deema | Live key + `DEEMA_BASE_URL=https://api.deema.me` + webhook URL = `https://yourdomain.com/api/payment/deema/webhook`. |
-| MyFatoorah | Production key + production base URL. |
+| Tap Payments | Live key (`sk_live_xxx`) when available. |
 | Test | Browse, checkout, pay, check admin and webhook. |
 
 Once these are done, the site is live on your domain with HTTPS and (when configured) real payments.

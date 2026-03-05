@@ -20,9 +20,7 @@ services:
         sync: false
       - key: DEEMA_WEBHOOK_SECRET
         sync: false
-      - key: MYFATOORAH_API_KEY
-        sync: false
-      - key: MYFATOORAH_BASE_URL
+      - key: TAP_API_KEY
         sync: false
       - key: DATABASE_URL
         sync: false

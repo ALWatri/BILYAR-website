@@ -4,7 +4,7 @@ BILYAR uses **Twilio** as the WhatsApp Business Solution Provider (BSP). Twilio 
 
 ## Order confirmation flow
 
-When a customer pays (MyFatoorah or Deema), they automatically receive a WhatsApp order confirmation message. (Invoice PDF is not sent via WhatsApp—customers can download it from the order confirmation page.)
+When a customer pays (Tap or Deema), they automatically receive a WhatsApp order confirmation message. (Invoice PDF is not sent via WhatsApp—customers can download it from the order confirmation page.)
 
 ---
 

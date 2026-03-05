@@ -16,7 +16,7 @@ export default function Checkout() {
   const { items, subtotal, shippingCost, total, clearCart } = useCart();
   const [, navigate] = useLocation();
   const [lang, setLang] = useState<"en" | "ar">("en");
-  const [paymentMethod, setPaymentMethod] = useState<"myfatoorah" | "deema">("myfatoorah");
+  const [paymentMethod, setPaymentMethod] = useState<"tap" | "deema">("tap");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
@@ -82,8 +82,8 @@ export default function Checkout() {
 
       const order = await orderRes.json();
 
-      const paymentEndpoint = paymentMethod === "myfatoorah"
-        ? "/api/payment/myfatoorah/initiate"
+      const paymentEndpoint = paymentMethod === "tap"
+        ? "/api/payment/tap/initiate"
         : "/api/payment/deema/initiate";
 
       const paymentRes = await apiRequest("POST", paymentEndpoint, {
@@ -231,20 +231,20 @@ export default function Checkout() {
 
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod("myfatoorah")}
+                    onClick={() => setPaymentMethod("tap")}
                     className={cn(
                       "w-full flex items-center gap-4 p-4 border transition-all text-left",
-                      paymentMethod === "myfatoorah"
+                      paymentMethod === "tap"
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-muted-foreground/40"
                     )}
-                    data-testid="payment-myfatoorah"
+                    data-testid="payment-tap"
                   >
                     <div className={cn(
                       "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0",
-                      paymentMethod === "myfatoorah" ? "border-primary" : "border-muted-foreground/40"
+                      paymentMethod === "tap" ? "border-primary" : "border-muted-foreground/40"
                     )}>
-                      {paymentMethod === "myfatoorah" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
+                      {paymentMethod === "tap" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
                     </div>
                     <div className="flex-1">
                       <p className="font-medium">{t.card_payment}</p>
