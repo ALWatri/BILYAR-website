@@ -50,7 +50,7 @@ function saveCart(items: CartItem[]) {
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(loadCart);
-  const { data: storeSettings } = useQuery<StoreSettings>({ queryKey: ["/api/settings"] });
+  useQuery<StoreSettings>({ queryKey: ["/api/settings"] }); // keep cache warm for admin/settings usage
 
   useEffect(() => {
     saveCart(items);
@@ -88,11 +88,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = () => setItems([]);
 
   const subtotal = items.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
-  const threshold = storeSettings?.freeShippingThreshold ?? 90;
-  const defaultCost = storeSettings?.defaultShippingCost ?? 5;
-  const shippingCost = subtotal >= threshold ? 0 : defaultCost;
-  const total = subtotal + shippingCost;
   const itemCount = items.reduce((acc, item) => acc + item.quantity, 0);
+  // Shipping rules:
+  // - Free delivery when cart has 2+ items
+  // - Otherwise base delivery is 3 KWD
+  // (Area-based 5 KWD exceptions are applied on checkout/server once area is known.)
+  const shippingCost = itemCount >= 2 ? 0 : 3;
+  const total = subtotal + shippingCost;
 
   return (
     <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, subtotal, shippingCost, total, itemCount }}>

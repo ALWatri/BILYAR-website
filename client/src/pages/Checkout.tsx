@@ -11,6 +11,7 @@ import { translations } from "@/lib/translations";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, ArrowRight, ShoppingBag, Truck, Shield } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { KUWAIT_AREAS } from "@/lib/kuwaitAreas";
 
 const CHECKOUT_DRAFT_KEY = "bilyar.checkoutDraft.v1";
 
@@ -57,6 +58,7 @@ export default function Checkout() {
 
   const t = translations[lang].checkout;
   const isRtl = lang === "ar";
+  const areaOptions = isRtl ? KUWAIT_AREAS.map(a => a.ar) : KUWAIT_AREAS.map(a => a.en);
 
   const updateField = (field: string, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -230,14 +232,22 @@ export default function Checkout() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="city">{t.city}</Label>
-                      <Input
-                        id="city"
-                        value={form.city}
-                        onChange={e => updateField("city", e.target.value)}
-                        required
-                        className="rounded-none"
-                        data-testid="input-city"
-                      />
+                      <div>
+                        <Input
+                          id="city"
+                          list="kuwait-areas"
+                          value={form.city}
+                          onChange={e => updateField("city", e.target.value)}
+                          required
+                          className="rounded-none"
+                          data-testid="input-city"
+                        />
+                        <datalist id="kuwait-areas">
+                          {areaOptions.map((name) => (
+                            <option key={name} value={name} />
+                          ))}
+                        </datalist>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="country">{t.country}</Label>

@@ -393,10 +393,40 @@ export async function registerRoutes(
         const p = productsById.get(item.productId)!;
         return acc + p.price * item.quantity;
       }, 0);
-      const s = await storage.getSettings();
-      const threshold = s?.freeShippingThreshold ?? 90;
-      const defaultCost = s?.defaultShippingCost ?? 5;
-      const shippingCost = subtotal >= threshold ? 0 : defaultCost;
+      const itemCount = data.items.reduce((acc, item) => acc + item.quantity, 0);
+      const cityRaw = (data.customer.city || "").toString().trim();
+      const cityNormEn = cityRaw.toLowerCase().replace(/\s+/g, " ").trim();
+      const cityNormAr = cityRaw.replace(/\s+/g, " ").trim();
+
+      const expensiveAreasAr = new Set([
+        "المطلاع",
+        "صباح الأحمد",
+        "جنوب صباح الأحمد",
+        "الخيران",
+        "أم الهيمان",
+      ]);
+      const expensiveAreasEn = new Set([
+        "al-mutlaa",
+        "mutlaa",
+        "al mutlaa",
+        "sabah al ahmad",
+        "south sabah al ahmad",
+        "khiran",
+        "al khiran",
+        "umm al hayman",
+        "um al hayman",
+      ]);
+
+      const isExpensiveArea =
+        expensiveAreasAr.has(cityNormAr) ||
+        expensiveAreasEn.has(cityNormEn) ||
+        expensiveAreasEn.has(cityNormEn.replace(/-/g, " "));
+
+      // Shipping rules:
+      // - Free delivery when buying 2+ items
+      // - Otherwise: 3 KWD
+      // - Exceptions (specific areas): 5 KWD
+      const shippingCost = itemCount >= 2 ? 0 : (isExpensiveArea ? 5 : 3);
       const total = subtotal + shippingCost;
       const isManual = data.paymentMethod === "manual";
 

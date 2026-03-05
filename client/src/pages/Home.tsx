@@ -42,6 +42,11 @@ export default function Home() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
+      {/* Announcement bar */}
+      <div className="bg-black text-white text-xs md:text-sm uppercase tracking-[0.2em] py-3 text-center px-4">
+        {t.announcement}
+      </div>
+
       <section className="relative h-screen w-full overflow-hidden">
         <div className="absolute inset-0 bg-black/30 z-10" />
         <img 
