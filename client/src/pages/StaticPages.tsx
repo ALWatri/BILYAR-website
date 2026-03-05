@@ -190,7 +190,7 @@ export function Privacy() {
   const lang = useLang();
   const isRtl = lang === "ar";
   const content = lang === "ar"
-    ? { title: "سياسة الخصوصية", p1: "تحترم بيليار خصوصيتك. لا نجمع معلوماتك الشخصية إلا لغرض معالجة الطلبات وتحسين تجربتك.", p2: "لا نشارك بياناتك مع أطراف ثالثة إلا حسب الضرورة للوفاء بالطلبات (مثل الشحن والدفع).", p3: "يمكنك التواصل معنا في أي وقت بخصوص بياناتك أو الأسئلة." }
+    ? { title: "سياسة الخصوصية", p1: "تحترم بيليار خصوصيتك. لا نجمع معلوماتك الشخصية إلا لغرض معالجة الطلبات وتحسين تجربتك.", p2: "لا نشارك بياناتك مع أطراف ثالثة إلا حسب الضرورة للوفاء بالطلبات (مثل التوصيل والدفع).", p3: "يمكنك التواصل معنا في أي وقت بخصوص بياناتك أو الأسئلة." }
     : { title: "Privacy Policy", p1: "BILYAR respects your privacy. We collect your personal information only to process orders and improve your experience.", p2: "We do not share your data with third parties except as necessary to fulfill orders (e.g. shipping and payment).", p3: "You may contact us at any time regarding your data or questions." };
 
   return (
@@ -212,7 +212,7 @@ export function Terms() {
   const lang = useLang();
   const isRtl = lang === "ar";
   const content = lang === "ar"
-    ? { title: "شروط الخدمة", p1: "باستخدام موقع بيليار، فإنك توافق على هذه الشروط.", p2: "جميع المنتجات عرضة للتوفر. نحتفظ بالحق في رفض أو إلغاء الطلبات.", p3: "الشحن والاسترجاع يخضعان لسياساتنا المنشورة." }
+    ? { title: "شروط الخدمة", p1: "باستخدام موقع بيليار، فإنك توافق على هذه الشروط.", p2: "جميع المنتجات عرضة للتوفر. نحتفظ بالحق في رفض أو إلغاء الطلبات.", p3: "التوصيل والاسترجاع يخضعان لسياساتنا المنشورة." }
     : { title: "Terms of Service", p1: "By using the BILYAR website, you agree to these terms.", p2: "All products are subject to availability. We reserve the right to refuse or cancel orders.", p3: "Shipping and returns are subject to our published policies." };
 
   return (

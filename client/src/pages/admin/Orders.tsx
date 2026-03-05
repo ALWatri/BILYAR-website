@@ -680,7 +680,7 @@ export default function Orders() {
       <section className="mb-12">
         <h2 className="text-xl font-serif font-semibold text-gray-900 mb-4">{t.successful_orders}</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          {isRtl ? "طلبات مدفوعة أو قيد التجهيز أو الشحن أو التسليم." : "Paid orders and those in progress, shipped, or delivered."}
+          {isRtl ? "طلبات مدفوعة أو قيد التجهيز أو التوصيل أو التسليم." : "Paid orders and those in progress, shipped, or delivered."}
         </p>
         <div className="bg-white border border-gray-200 rounded-sm shadow-sm">
           <Table>

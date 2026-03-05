@@ -42,11 +42,6 @@ export default function Home() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      {/* Announcement bar */}
-      <div className="bg-black text-white text-xs md:text-sm uppercase tracking-[0.2em] py-3 text-center px-4">
-        {t.announcement}
-      </div>
-
       <section className="relative h-screen w-full overflow-hidden">
         <div className="absolute inset-0 bg-black/30 z-10" />
         <img 
@@ -91,6 +86,11 @@ export default function Home() {
       {HOME_VIDEOS.length > 0 && (
         <HomeVideoGrid videos={HOME_VIDEOS} />
       )}
+
+      {/* Announcement bar - under videos */}
+      <div className={cn("bg-black text-white text-xs md:text-sm py-3 text-center px-4", isRtl ? "" : "uppercase tracking-[0.2em]")}>
+        {t.announcement}
+      </div>
 
       <section id="collections" className="py-24 bg-secondary/30 scroll-mt-20">
         <div className="container mx-auto px-6">
