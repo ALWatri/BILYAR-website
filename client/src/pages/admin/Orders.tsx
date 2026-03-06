@@ -40,7 +40,7 @@ export default function Orders() {
   const [lang, setLang] = useState<"en" | "ar">("en");
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
   const [detailOrderId, setDetailOrderId] = useState<number | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("All");
   const [createOrderOpen, setCreateOrderOpen] = useState(false);
   const [editForm, setEditForm] = useState<{
     customer: { name: string; email: string; phone: string; address: string; city: string; country: string };
@@ -311,14 +311,26 @@ export default function Orders() {
 
   const openInvoicePdf = async (order: OrderWithItems, download = false) => {
     try {
-      const res = await fetch(`/api/orders/${order.id}/invoice-pdf-url${download ? "?dl=1" : ""}`, { credentials: "include" });
+      const url = `/api/orders/${order.id}/invoice-pdf${download ? "?dl=1" : ""}`;
+      const res = await fetch(url, { credentials: "include" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.message || (isRtl ? "يرجى تسجيل الدخول مرة أخرى لعرض الفاتورة." : "Please log in again to view the invoice."));
+        const msg = data.message || (isRtl ? "يرجى تسجيل الدخول مرة أخرى لعرض الفاتورة." : "Please log in again to view the invoice.");
+        alert(msg);
         return;
       }
-      const { url } = await res.json();
-      if (url) window.open(url, "_blank");
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      if (download) {
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = `invoice-${order.orderNumber}.pdf`;
+        a.click();
+        URL.revokeObjectURL(blobUrl);
+      } else {
+        window.open(blobUrl, "_blank");
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      }
     } catch {
       alert(isRtl ? "تعذر فتح الفاتورة." : "Could not open invoice.");
     }
@@ -491,10 +503,14 @@ export default function Orders() {
   const pendingAbandonedOrders = orders.filter((o) => pendingAbandonedStatuses.includes(o.status));
 
   const ORDER_STATUSES = ["All", "Pending", "Paid", "Processing", "Shipped", "Delivered", "Cancelled", "Unfinished"] as const;
-  const filteredOrders =
+  const filteredSuccessful =
     statusFilter === "all" || statusFilter === "All"
-      ? orders
-      : orders.filter((o) => o.status === statusFilter);
+      ? successfulOrders
+      : successfulOrders.filter((o) => o.status === statusFilter);
+  const filteredPending =
+    statusFilter === "all" || statusFilter === "All"
+      ? pendingAbandonedOrders
+      : pendingAbandonedOrders.filter((o) => o.status === statusFilter);
 
   const renderOrderRow = (order: OrderWithItems) => (
               <TableRow key={order.id} data-testid={`row-order-${order.id}`}>
@@ -687,18 +703,22 @@ export default function Orders() {
                           <Button variant="outline" onClick={() => startEdit(order)} className="gap-2">
                             <Pencil className="h-4 w-4" /> {t.edit}
                           </Button>
-                          <Button variant="outline" onClick={() => openInvoicePdf(order)} className="gap-2">
-                            <Printer className="h-4 w-4" /> {t.print_invoice}
-                          </Button>
-                          <Button variant="outline" onClick={() => openInvoicePdf(order, true)} className="gap-2">
-                            <FileDown className="h-4 w-4" /> {t.download_pdf}
-                          </Button>
-                          <Button variant="outline" onClick={() => printDeliverySlip(order)} className="gap-2">
-                            <Truck className="h-4 w-4" /> Delivery Slip
-                          </Button>
-                          <Button variant="outline" onClick={() => printTailorSlip(order)} className="gap-2">
-                            <Scissors className="h-4 w-4" /> Tailor Slip
-                          </Button>
+                          {successfulStatuses.includes(order.status) && (
+                            <>
+                              <Button variant="outline" onClick={() => openInvoicePdf(order)} className="gap-2">
+                                <Printer className="h-4 w-4" /> {t.print_invoice}
+                              </Button>
+                              <Button variant="outline" onClick={() => openInvoicePdf(order, true)} className="gap-2">
+                                <FileDown className="h-4 w-4" /> {t.download_pdf}
+                              </Button>
+                              <Button variant="outline" onClick={() => printDeliverySlip(order)} className="gap-2">
+                                <Truck className="h-4 w-4" /> Delivery Slip
+                              </Button>
+                              <Button variant="outline" onClick={() => printTailorSlip(order)} className="gap-2">
+                                <Scissors className="h-4 w-4" /> Tailor Slip
+                              </Button>
+                            </>
+                          )}
                         </div>
                         <Button
                           variant="outline"
@@ -858,26 +878,49 @@ export default function Orders() {
       </Dialog>
 
       <section className="mb-12">
-        <h2 className="text-xl font-serif font-semibold text-gray-900 mb-2">
-          {statusFilter === "all" || statusFilter === "All"
-            ? (isRtl ? "جميع الطلبات" : "All orders")
-            : (isRtl ? `طلبات: ${statusFilter}` : `Orders: ${statusFilter}`)}
-        </h2>
+        <h2 className="text-xl font-serif font-semibold text-gray-900 mb-4">{t.successful_orders}</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          {filteredOrders.length} {isRtl ? "طلب" : "order(s)"}
+          {statusFilter === "all" || statusFilter === "All"
+            ? (isRtl ? "طلبات مدفوعة أو قيد التجهيز أو التوصيل أو التسليم." : "Paid orders and those in progress, shipped, or delivered.")
+            : `${filteredSuccessful.length} ${isRtl ? "طلب" : "order(s)"}`}
         </p>
         <div className="bg-white border border-gray-200 rounded-sm shadow-sm">
           <Table>
             <TableHeader>{tableHeader}</TableHeader>
             <TableBody>
-              {filteredOrders.length === 0 ? (
+              {filteredSuccessful.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                    {isRtl ? "لا توجد طلبات" : "No orders"}
+                    {isRtl ? "لا توجد طلبات ناجحة" : "No successful orders yet"}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredOrders.map((order) => renderOrderRow(order))
+                filteredSuccessful.map((order) => renderOrderRow(order))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-xl font-serif font-semibold text-gray-900 mb-4">{t.pending_abandoned_orders}</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          {statusFilter === "all" || statusFilter === "All"
+            ? (isRtl ? "طلبات معلقة أو غير مكتملة أو ملغاة." : "Pending, abandoned, or cancelled.")
+            : `${filteredPending.length} ${isRtl ? "طلب" : "order(s)"}`}
+        </p>
+        <div className="bg-white border border-gray-200 rounded-sm shadow-sm">
+          <Table>
+            <TableHeader>{tableHeader}</TableHeader>
+            <TableBody>
+              {filteredPending.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                    {isRtl ? "لا توجد طلبات معلقة أو غير مكتملة" : "No pending or abandoned orders"}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredPending.map((order) => renderOrderRow(order))
               )}
             </TableBody>
           </Table>
