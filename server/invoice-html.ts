@@ -36,6 +36,7 @@ function paymentMethodLabel(method: string | undefined): string {
 export function getInvoiceHtml(order: OrderWithItems, settings?: Settings | null): string {
   const driver = getDriverEnglish(order);
   const siteUrl = process.env.SITE_URL || "https://bilyarofficial.com";
+  const logoUrl = siteUrl.replace(/\/$/, "") + "/images/bilyar-logo.png";
   const storeEmail = escapeHtml(settings?.storeEmail || "info@bilyarofficial.com");
   const storePhone = escapeHtml(settings?.storePhone || "+965 XXXXXXXX");
   const siteDisplay = escapeHtml(siteUrl.replace(/^https?:\/\//, ""));
@@ -74,6 +75,8 @@ body{margin:0;background:var(--emerald-dark);font-family:Inter,sans-serif;paddin
 .paper::after{content:"";position:absolute;inset:22px;border:1px solid var(--emerald)}
 .wrap{position:relative;padding:48px;z-index:2}
 .logo{font-family:"Cormorant Garamond",serif;font-size:42px;font-weight:600;color:var(--gold);margin:0;text-align:center;letter-spacing:.08em}
+.logo-img{display:block;margin:0 auto;height:48px;width:auto}
+.logo-img-wrap{margin:0;text-align:center}
 .invoice-title{font-size:14px;letter-spacing:.2em;color:var(--ink);text-align:center;margin:8px 0 32px;font-weight:500}
 .top-row{display:flex;justify-content:space-between;margin-bottom:32px;gap:24px}
 .bill-to{flex:1}
@@ -102,7 +105,7 @@ tbody td.num{text-align:right}
 <body>
 <div class="paper">
 <div class="wrap">
-<h1 class="logo">BILYAR.</h1>
+<h1 class="logo-img-wrap"><img src="${logoUrl}" alt="BILYAR" class="logo-img"/></h1>
 <p class="invoice-title">INVOICE</p>
 <div class="top-row">
 <div class="bill-to">

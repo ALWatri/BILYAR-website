@@ -75,16 +75,12 @@ export function Navbar() {
           </nav>
         </div>
 
-        <Link href="/" className="absolute left-1/2 -translate-x-1/2">
-          <h1 
-            className={cn(
-              "text-3xl md:text-4xl font-serif font-bold tracking-tighter transition-colors duration-300 flex items-center", 
-              textColor
-            )} 
-            style={{ fontFamily: "var(--font-rigot, 'Playfair Display'), serif", direction: "ltr" }}
-          >
-            BILYAR.
-          </h1>
+        <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
+          <img
+            src="/images/bilyar-logo.png"
+            alt="BILYAR"
+            className="h-10 md:h-12 w-auto object-contain"
+          />
         </Link>
 
         <div className="flex items-center gap-2 md:gap-4">

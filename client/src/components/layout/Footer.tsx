@@ -43,12 +43,11 @@ export function Footer() {
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           <div className="space-y-6">
-            <h2 
-              className="text-3xl font-serif font-bold tracking-tighter"
-              style={{ fontFamily: "var(--font-rigot, 'Playfair Display'), serif", direction: "ltr" }}
-            >
-              BILYAR.
-            </h2>
+            <img
+              src="/images/bilyar-logo.png"
+              alt="BILYAR"
+              className="h-10 w-auto object-contain"
+            />
             <p className="text-primary-foreground/80 leading-relaxed font-light">
               {t.tagline}
             </p>

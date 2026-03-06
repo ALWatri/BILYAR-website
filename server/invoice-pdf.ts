@@ -1,4 +1,6 @@
 import PDFDocument from "pdfkit";
+import path from "path";
+import fs from "fs";
 import type { Order, OrderItem, Settings } from "@shared/schema";
 import { getInvoiceHtml } from "./invoice-html";
 import { toEnglishCity, toEnglishText } from "./invoice-locale";
@@ -53,6 +55,18 @@ function safeNum(v: unknown, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function getLogoPath(): string | null {
+  const candidates = [
+    path.join(__dirname, "public", "images", "bilyar-logo.png"),
+    path.join(process.cwd(), "dist", "public", "images", "bilyar-logo.png"),
+    path.join(process.cwd(), "client", "public", "images", "bilyar-logo.png"),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
 /** PDFKit fallback when Puppeteer/Chromium unavailable (e.g. Render) */
 function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -94,9 +108,16 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     doc.x = contentLeft;
     doc.y = 50;
 
-    // BILYAR. logo
-    doc.fontSize(32).fillColor(GOLD).font("Helvetica-Bold").text("BILYAR.", contentLeft, doc.y, { align: "center", width: contentWidth });
-    doc.y += 28;
+    const logoPath = getLogoPath();
+    const logoHeight = 36;
+    const logoWidth = 180;
+    if (logoPath) {
+      doc.image(logoPath, contentLeft + (contentWidth - logoWidth) / 2, doc.y, { width: logoWidth });
+      doc.y += logoHeight + 8;
+    } else {
+      doc.fontSize(32).fillColor(GOLD).font("Helvetica-Bold").text("BILYAR.", contentLeft, doc.y, { align: "center", width: contentWidth });
+      doc.y += 28;
+    }
     // INVOICE
     doc.fontSize(11).fillColor(INK).font("Helvetica").text("INVOICE", contentLeft, doc.y, { align: "center", width: contentWidth });
     doc.y += 40;
