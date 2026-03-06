@@ -4,7 +4,7 @@ import fs from "fs";
 import type { Order, OrderItem, Settings } from "@shared/schema";
 import { getInvoiceHtml } from "./invoice-html";
 import { toEnglishCity, toEnglishText, addressToEnglish } from "./invoice-locale";
-import { hasArabic, translateToEnglish } from "./translate";
+import { hasArabic } from "./translate";
 
 type OrderWithItems = Order & { items: OrderItem[] };
 
@@ -108,7 +108,8 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
       .lineWidth(1).stroke(EMERALD);
 
     doc.x = contentLeft;
-    doc.y = 50;
+    const topStartY = margin + border + 5;
+    doc.y = topStartY;
 
     const logoPath = getLogoPath();
     const logoHeight = 36;
@@ -146,7 +147,7 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
 
     const metaWidth = 180;
     const metaX = contentLeft + contentWidth - metaWidth;
-    doc.y = 50 + (logoPath ? logoHeight + 8 : 28) + 12;
+    doc.y = topStartY + (logoPath ? logoHeight + 8 : 28) + 12;
     doc.fontSize(9).fillColor(INK);
     doc.text(`Order # ${safeStr(order?.orderNumber)}`, metaX, doc.y, { width: metaWidth, align: "right" });
     doc.y += 14;
@@ -157,14 +158,18 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     doc.y = Math.max(billToBottom, doc.y) + 20;
 
     // Table header
-    const descX = contentLeft + 8;
-    const descW = 270;
-    const priceX = descX + descW;
-    const priceW = 85;
-    const qtyX = priceX + priceW;
-    const qtyW = 45;
-    const totalX = qtyX + qtyW;
-    const totalW = contentRight - totalX - 8;
+    const tableInset = 8;
+    const colGap = 8;
+    const tableLeft = contentLeft + tableInset;
+    const tableRight = contentRight - tableInset;
+    const totalW = 98;
+    const qtyW = 44;
+    const priceW = 88;
+    const totalX = tableRight - totalW;
+    const qtyX = totalX - colGap - qtyW;
+    const priceX = qtyX - colGap - priceW;
+    const descX = tableLeft;
+    const descW = priceX - colGap - descX;
     const th = doc.y;
     const ROW_HEIGHT = 20;
     doc.rect(contentLeft, th, contentWidth, 22).fill(EMERALD);
@@ -178,32 +183,33 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     // Table rows — fixed row height for consistent spacing
     doc.fontSize(10).fillColor(INK).font("Helvetica");
     for (const item of items) {
+      const rowY = doc.y;
       const price = safeNum(item?.price, 0);
       const qty = Math.max(1, Math.floor(safeNum(item?.quantity, 1)));
       const lineTotal = (price * qty).toFixed(3);
-      doc.text(safeStr(item?.productName), descX, doc.y, { width: descW });
-      doc.text(price.toFixed(3) + " KWD", priceX, doc.y, { width: priceW, align: "right" });
-      doc.text(String(qty), qtyX, doc.y, { width: qtyW, align: "center" });
-      doc.text(lineTotal + " KWD", totalX, doc.y, { width: totalW, align: "right" });
-      doc.y += ROW_HEIGHT;
+      doc.text(safeStr(item?.productName), descX, rowY, { width: descW, lineBreak: false, ellipsis: true });
+      doc.text(price.toFixed(3) + " KWD", priceX, rowY, { width: priceW, align: "right", lineBreak: false });
+      doc.text(String(qty), qtyX, rowY, { width: qtyW, align: "center", lineBreak: false });
+      doc.text(lineTotal + " KWD", totalX, rowY, { width: totalW, align: "right", lineBreak: false });
+      doc.y = rowY + ROW_HEIGHT;
     }
     doc.y += 14;
 
-    // Summary — Subtotal, Delivery, Total stacked with values close to labels
-    const sumLabelX = contentRight - 220;
-    const sumValueX = contentRight - 95;
+    // Summary — aligned to the same table columns (label near price, value on total edge)
+    const sumLabelX = priceX;
+    const sumLabelW = qtyX - colGap - sumLabelX;
     doc.fontSize(10).fillColor(INK).font("Helvetica");
-    doc.text("Subtotal", sumLabelX, doc.y);
-    doc.text(subtotal.toFixed(3) + " KWD", sumValueX, doc.y);
+    doc.text("Subtotal", sumLabelX, doc.y, { width: sumLabelW, align: "left" });
+    doc.text(subtotal.toFixed(3) + " KWD", totalX, doc.y, { width: totalW, align: "right" });
     doc.y += 16;
-    doc.text("Delivery", sumLabelX, doc.y);
-    doc.text(shippingCost.toFixed(3) + " KWD", sumValueX, doc.y);
+    doc.text("Delivery", sumLabelX, doc.y, { width: sumLabelW, align: "left" });
+    doc.text(shippingCost.toFixed(3) + " KWD", totalX, doc.y, { width: totalW, align: "right" });
     doc.y += 16;
-    doc.moveTo(sumLabelX, doc.y).lineTo(contentRight, doc.y).strokeColor("#E7E1D4").stroke();
+    doc.moveTo(sumLabelX, doc.y).lineTo(tableRight, doc.y).strokeColor("#E7E1D4").stroke();
     doc.y += 12;
     doc.fontSize(12).fillColor(EMERALD).font("Helvetica-Bold");
-    doc.text("Total", sumLabelX, doc.y);
-    doc.text(total.toFixed(3) + " KWD", sumValueX, doc.y);
+    doc.text("Total", sumLabelX, doc.y, { width: sumLabelW, align: "left" });
+    doc.text(total.toFixed(3) + " KWD", totalX, doc.y, { width: totalW, align: "right" });
     doc.y += 28;
 
     // PAYMENT DETAILS - left-aligned, full width for readability
@@ -269,10 +275,7 @@ async function enrichOrderForInvoice(order: OrderWithItems): Promise<OrderWithIt
     customerCountryEn?: string | null;
   };
 
-  let customerNameEn = (o.customerNameEn || "").trim();
-  if (!customerNameEn || hasArabic(customerNameEn)) {
-    customerNameEn = (await translateToEnglish(order.customerName || "")) || "Customer";
-  }
+  const customerNameEn = (order.customerName || o.customerNameEn || "").trim() || "Customer";
 
   let customerAddressEn = (o.customerAddressEn || "").trim();
   if (!customerAddressEn || hasArabic(customerAddressEn)) {
