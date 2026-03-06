@@ -54,6 +54,7 @@ export function addressToEnglish(addressRaw: string | null | undefined): string 
   let a = a0
     .replace(/قطعة/g, "Block")
     .replace(/قطعه/g, "Block")
+    .replace(/قسيمة/g, "Parcel")
     .replace(/شارع/g, "Street")
     .replace(/جادة/g, "Avenue")
     .replace(/منزل/g, "House")

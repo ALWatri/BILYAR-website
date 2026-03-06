@@ -262,6 +262,7 @@ export default function Orders() {
     let a = a0
       .replace(/قطعة/g, "Block")
       .replace(/قطعه/g, "Block")
+      .replace(/قسيمة/g, "Parcel")
       .replace(/شارع/g, "Street")
       .replace(/جادة/g, "Avenue")
       .replace(/منزل/g, "House")
@@ -281,20 +282,16 @@ export default function Orders() {
     return a;
   }
 
-  /** Show driver-friendly English when possible */
+  /** Show original name; convert address/city/country to English for display using structured Kuwait mapping */
   const forDriver = (order: OrderWithItems) => {
-    const name = (order as OrderWithItems & { customerNameEn?: string | null }).customerNameEn ?? order.customerName;
-    const addressEn = (order as OrderWithItems & { customerAddressEn?: string | null }).customerAddressEn ?? "";
-    const cityEn = (order as OrderWithItems & { customerCityEn?: string | null }).customerCityEn ?? "";
-    const countryEn = (order as OrderWithItems & { customerCountryEn?: string | null }).customerCountryEn ?? "";
-
-    const addressRaw = addressEn.trim() ? addressEn : order.customerAddress;
-    const cityRaw = cityEn.trim() ? cityEn : order.customerCity;
-    const countryRaw = countryEn.trim() ? countryEn : order.customerCountry;
+    const name = (order.customerName ?? (order as OrderWithItems & { customerNameEn?: string | null }).customerNameEn ?? "").trim() || "—";
+    const addressRaw = order.customerAddress ?? "";
+    const cityRaw = order.customerCity ?? "";
+    const countryRaw = order.customerCountry ?? "";
 
     return {
       name,
-      address: isMostlyArabic(addressRaw) ? kuwaitAddressToEnglish(addressRaw) : normalizeSpace(addressRaw),
+      address: isMostlyArabic(addressRaw) ? kuwaitAddressToEnglish(addressRaw) : normalizeSpace(addressRaw) || "—",
       city: isMostlyArabic(cityRaw) ? (KUWAIT_AREA_AR_TO_EN[normalizeSpace(cityRaw)] ?? "Kuwait") : normalizeSpace(cityRaw || "Kuwait"),
       country: isMostlyArabic(countryRaw) ? "Kuwait" : normalizeSpace(countryRaw || "Kuwait"),
     };
@@ -317,8 +314,15 @@ export default function Orders() {
       } catch (_) {}
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const url = `/api/orders/${order.id}/invoice-pdf${download ? "?dl=1" : ""}`;
-      const res = await fetch(url, { credentials: "include", headers });
+      const urlRes = await fetch(`/api/orders/${order.id}/invoice-pdf-url${download ? "?dl=1" : ""}`, { credentials: "include", headers });
+      if (!urlRes.ok) {
+        const data = await urlRes.json().catch(() => ({}));
+        const msg = data.message || (isRtl ? "يرجى تسجيل الدخول مرة أخرى لعرض الفاتورة." : "Please log in again to view the invoice.");
+        alert(msg);
+        return;
+      }
+      const { url } = await urlRes.json() as { url: string };
+      const res = await fetch(url);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         const msg = data.message || (isRtl ? "يرجى تسجيل الدخول مرة أخرى لعرض الفاتورة." : "Please log in again to view the invoice.");

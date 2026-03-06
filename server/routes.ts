@@ -7,6 +7,7 @@ import multer from "multer";
 import type { IStorage } from "./storage";
 import { getFirebaseStorageBucket } from "./firebase-init";
 import { translateToEnglish } from "./translate";
+import { addressToEnglish, toEnglishCity, toEnglishText } from "./invoice-locale";
 import { generateInvoicePdf } from "./invoice-pdf";
 import {
   verifyInvoiceToken,
@@ -592,14 +593,11 @@ export async function registerRoutes(
       const total = subtotal + shippingCost;
       const isManual = data.paymentMethod === "manual";
 
-      // Always compute English variants so invoices/driver slips render correctly
-      // (PDFKit fallback cannot render Arabic reliably).
-      const [customerNameEn, customerAddressEn, customerCityEn, customerCountryEn] = await Promise.all([
-        translateToEnglish(data.customer.name),
-        translateToEnglish(data.customer.address),
-        translateToEnglish(data.customer.city),
-        translateToEnglish(data.customer.country),
-      ]);
+      // Keep customer name as-is (no translation). Use structured address conversion for reliable display.
+      const customerNameEn = data.customer.name;
+      const customerAddressEn = addressToEnglish(data.customer.address);
+      const customerCityEn = toEnglishCity(data.customer.city);
+      const customerCountryEn = toEnglishText(data.customer.country, "Kuwait");
 
       const itemsWithNotesEn = await Promise.all(
         data.items.map(async (item) => {
@@ -739,21 +737,21 @@ export async function registerRoutes(
       if (data.customer) {
         if (data.customer.name != null) {
           orderData.customerName = data.customer.name;
-          orderData.customerNameEn = await translateToEnglish(data.customer.name);
+          orderData.customerNameEn = data.customer.name;
         }
         if (data.customer.email != null) orderData.customerEmail = data.customer.email;
         if (data.customer.phone != null) orderData.customerPhone = data.customer.phone;
         if (data.customer.address != null) {
           orderData.customerAddress = data.customer.address;
-          orderData.customerAddressEn = await translateToEnglish(data.customer.address);
+          orderData.customerAddressEn = addressToEnglish(data.customer.address);
         }
         if (data.customer.city != null) {
           orderData.customerCity = data.customer.city;
-          orderData.customerCityEn = await translateToEnglish(data.customer.city);
+          orderData.customerCityEn = toEnglishCity(data.customer.city);
         }
         if (data.customer.country != null) {
           orderData.customerCountry = data.customer.country;
-          orderData.customerCountryEn = await translateToEnglish(data.customer.country);
+          orderData.customerCountryEn = toEnglishText(data.customer.country, "Kuwait");
         }
       }
       if (data.status != null) orderData.status = data.status;
@@ -963,7 +961,7 @@ export async function registerRoutes(
       console.warn("WhatsApp skip: order not found or no customerPhone", { orderId, hasOrder: !!order });
       return;
     }
-    const name = (order as any).customerNameEn || order.customerName;
+    const name = order.customerName || (order as any).customerNameEn || "";
     const firstName = name.split(" ")[0] || name;
     const publicBase = (SITE_URL || baseUrl).replace(/\/$/, "");
     const isPublicUrl = publicBase.startsWith("https://");
@@ -1003,7 +1001,7 @@ export async function registerRoutes(
     if (!isWhatsAppConfigured() || !TWILIO_CONTENT_ORDER_SHIPPED) return;
     const order = await storage.getOrder(orderId);
     if (!order || !order.customerPhone) return;
-    const name = (order as any).customerNameEn || order.customerName;
+    const name = order.customerName || (order as any).customerNameEn || "";
     const firstName = name.split(" ")[0] || name;
     await sendTemplate(
       order.customerPhone,
