@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useCart } from "@/lib/cart";
 import { translations } from "@/lib/translations";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, ShoppingBag, Truck, Shield, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, ShoppingBag, Truck, Shield } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { KUWAIT_AREAS, is5KwdDeliveryArea } from "@/lib/kuwaitAreas";
 
@@ -68,33 +68,37 @@ export default function Checkout() {
   const isRtl = lang === "ar";
   const areaOptions = isRtl ? KUWAIT_AREAS.map(a => a.ar) : KUWAIT_AREAS.map(a => a.en);
 
-  const [lookupLoading, setLookupLoading] = useState(false);
-  const updateField = (field: string, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-  };
+  const lookupRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const lookupByPhone = async () => {
-    const digits = form.phone.replace(/\D/g, "").slice(-8);
-    if (digits.length < 8) return;
-    setLookupLoading(true);
-    try {
-      const res = await fetch(`/api/customers/by-phone?phone=${encodeURIComponent(form.phone)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setForm(prev => ({
-          ...prev,
-          fullName: data.name ?? prev.fullName,
-          email: data.email ?? prev.email,
-          address: data.address ?? prev.address,
-          city: data.city ?? prev.city,
-          country: data.country ?? prev.country,
-        }));
+  const updateField = (field: string, value: string) => {
+    setForm(prev => {
+      const next = { ...prev, [field]: value };
+      if (field === "phone") {
+        if (lookupRef.current) clearTimeout(lookupRef.current);
+        const digits = value.replace(/\D/g, "").slice(-8);
+        if (digits.length >= 8) {
+          lookupRef.current = setTimeout(() => {
+            lookupRef.current = null;
+            fetch(`/api/customers/by-phone?phone=${encodeURIComponent(value)}`)
+              .then((res) => res.ok ? res.json() : null)
+              .then((data) => {
+                if (data) {
+                  setForm((f) => ({
+                    ...f,
+                    fullName: data.name ?? f.fullName,
+                    email: data.email ?? f.email,
+                    address: data.address ?? f.address,
+                    city: data.city ?? f.city,
+                    country: data.country ?? f.country,
+                  }));
+                }
+              })
+              .catch(() => {});
+          }, 400);
+        }
       }
-    } catch {
-      /* ignore */
-    } finally {
-      setLookupLoading(false);
-    }
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -218,22 +222,16 @@ export default function Checkout() {
 
                   <div className="space-y-2">
                     <Label htmlFor="phone">{t.phone}</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="phone"
-                        type="tel"
-                        value={form.phone}
-                        onChange={e => updateField("phone", e.target.value)}
-                        onBlur={lookupByPhone}
-                        required
-                        className="rounded-none flex-1"
-                        data-testid="input-phone"
-                        placeholder={isRtl ? "٩٦٥ ١٢٣٤٥٦٧٨" : "965 12345678"}
-                      />
-                      <Button type="button" variant="outline" onClick={lookupByPhone} disabled={lookupLoading || form.phone.replace(/\D/g, "").length < 8} className="rounded-none whitespace-nowrap">
-                        {lookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (isRtl ? "جلب البيانات" : "Retrieve")}
-                      </Button>
-                    </div>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={form.phone}
+                      onChange={e => updateField("phone", e.target.value)}
+                      required
+                      className="rounded-none"
+                      data-testid="input-phone"
+                      placeholder={isRtl ? "٩٦٥ ١٢٣٤٥٦٧٨" : "965 12345678"}
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
