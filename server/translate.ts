@@ -44,6 +44,24 @@ async function translateWithGoogle(text: string): Promise<string | null> {
   }
 }
 
+/** Simple Arabic-to-Latin transliteration for names when translation fails. */
+const AR_TO_LATIN: Record<string, string> = {
+  ا: "a", أ: "a", آ: "a", إ: "i", ء: "'", ب: "b", ت: "t", ث: "th", ج: "j", ح: "h", خ: "kh",
+  د: "d", ذ: "dh", ر: "r", ز: "z", س: "s", ش: "sh", ص: "s", ض: "d", ط: "t", ظ: "z", ع: "a", غ: "gh",
+  ف: "f", ق: "q", ك: "k", ل: "l", م: "m", ن: "n", ه: "h", و: "w", ي: "y", ى: "a", ئ: "y", ؤ: "w",
+  َ: "a", ُ: "u", ِ: "i", ً: "an", ٌ: "un", ٍ: "in", ّ: "", ْ: "",
+};
+
+export function transliterateArabic(text: string): string {
+  if (!text || typeof text !== "string") return "";
+  return text
+    .split("")
+    .map((c) => AR_TO_LATIN[c] ?? (c.trim() ? c : " "))
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** Translate text to English if it contains Arabic. Returns original string if no Arabic or translation fails. */
 export async function translateToEnglish(text: string): Promise<string> {
   if (!text || typeof text !== "string") return text;
@@ -53,7 +71,9 @@ export async function translateToEnglish(text: string): Promise<string> {
 
   const translated =
     (await translateWithGoogle(trimmed)) ?? (await translateWithLibreTranslate(trimmed));
-  return translated && translated.trim() ? translated.trim() : text;
+  const result = translated && translated.trim() ? translated.trim() : text;
+  if (hasArabic(result)) return transliterateArabic(result);
+  return result;
 }
 
 /** Translate multiple strings; returns array in same order. Skips empty and non-Arabic. */

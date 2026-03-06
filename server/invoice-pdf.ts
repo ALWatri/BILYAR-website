@@ -271,8 +271,7 @@ async function enrichOrderForInvoice(order: OrderWithItems): Promise<OrderWithIt
 
   let customerNameEn = (o.customerNameEn || "").trim();
   if (!customerNameEn || hasArabic(customerNameEn)) {
-    const translated = await translateToEnglish(order.customerName || "");
-    customerNameEn = translated && !hasArabic(translated) ? translated : "Customer";
+    customerNameEn = (await translateToEnglish(order.customerName || "")) || "Customer";
   }
 
   let customerAddressEn = (o.customerAddressEn || "").trim();
