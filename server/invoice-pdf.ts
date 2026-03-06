@@ -22,13 +22,25 @@ function getDriverEnglish(order: OrderWithItems) {
     customerCityEn?: string | null;
     customerCountryEn?: string | null;
   };
-  const name = (o.customerNameEn ?? order.customerName)?.trim();
+  const rawName = (order.customerName ?? o.customerNameEn)?.trim();
+  const name = normalizeDisplayName(rawName || "");
   return {
     name: name || "—",
     address: o.customerAddressEn ? toEnglishText(o.customerAddressEn, "—") : addressToEnglish(order.customerAddress),
     city: toEnglishCity(o.customerCityEn ?? order.customerCity),
     country: toEnglishText(o.customerCountryEn ?? order.customerCountry, "Kuwait"),
   };
+}
+
+function normalizeDisplayName(name: string): string {
+  const cleaned = (name || "").trim();
+  if (!cleaned || !hasArabic(cleaned)) return cleaned;
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  // If the family name (usually starts with "ال") appears first, swap two-part names.
+  if (parts.length === 2 && parts[0].startsWith("ال") && !parts[1].startsWith("ال")) {
+    return `${parts[1]} ${parts[0]}`;
+  }
+  return cleaned;
 }
 
 function formatDate(dateStr: string): string {
@@ -149,10 +161,7 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     } else {
       doc.font("Helvetica");
     }
-    doc.fontSize(10).fillColor(INK).text(driver.name, contentLeft, doc.y, {
-      width: 280,
-      align: hasArabicName ? "right" : "left",
-    });
+    doc.fontSize(10).fillColor(INK).text(driver.name, contentLeft, doc.y, { width: 280, align: "left" });
     if (hasArabicName && arabicFontPath) doc.font("Helvetica");
     doc.y += 14;
     const addressLine = driver.address !== "—" ? driver.address : "";

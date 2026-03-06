@@ -1,5 +1,6 @@
 import type { Order, OrderItem, Settings } from "@shared/schema";
 import { toEnglishCity, toEnglishText, addressToEnglish } from "./invoice-locale";
+import { hasArabic } from "./translate";
 
 type OrderWithItems = Order & { items: OrderItem[] };
 
@@ -10,13 +11,24 @@ function getDriverEnglish(order: OrderWithItems) {
     customerCityEn?: string | null;
     customerCountryEn?: string | null;
   };
-  const name = (o.customerNameEn ?? order.customerName)?.trim();
+  const rawName = (order.customerName ?? o.customerNameEn)?.trim();
+  const name = normalizeDisplayName(rawName || "");
   return {
     name: name || "—",
     address: o.customerAddressEn ? toEnglishText(o.customerAddressEn, "—") : addressToEnglish(order.customerAddress),
     city: toEnglishCity(o.customerCityEn ?? order.customerCity),
     country: toEnglishText(o.customerCountryEn ?? order.customerCountry, "Kuwait"),
   };
+}
+
+function normalizeDisplayName(name: string): string {
+  const cleaned = (name || "").trim();
+  if (!cleaned || !hasArabic(cleaned)) return cleaned;
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 2 && parts[0].startsWith("ال") && !parts[1].startsWith("ال")) {
+    return `${parts[1]} ${parts[0]}`;
+  }
+  return cleaned;
 }
 
 function formatDate(dateStr: string): string {
