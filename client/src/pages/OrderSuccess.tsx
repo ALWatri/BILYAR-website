@@ -15,6 +15,7 @@ export default function OrderSuccess() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const orderId = params.get("orderId");
+  const invoiceToken = params.get("t");
   const isDemo = params.get("demo") === "true";
   const { clearCart } = useCart();
 
@@ -88,14 +89,16 @@ export default function OrderSuccess() {
                 <span>{isRtl ? "الإجمالي" : "Total"}</span>
                 <span>{order.total.toFixed(3)} KWD</span>
               </div>
-              <a
-                href={`/api/orders/${order.id}/invoice-pdf?dl=1`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline"
-              >
-                {t.download_invoice}
-              </a>
+              {invoiceToken && (
+                <a
+                  href={`/api/orders/${order.id}/invoice-pdf?t=${encodeURIComponent(invoiceToken)}&dl=1`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline"
+                >
+                  {t.download_invoice}
+                </a>
+              )}
             </div>
           )}
 

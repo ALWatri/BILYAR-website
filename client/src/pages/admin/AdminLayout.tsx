@@ -39,6 +39,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const isRtl = lang === "ar";
 
   const handleLogout = () => {
+    fetch("/api/admin/logout", { method: "POST", credentials: "include" }).catch(() => {});
     localStorage.removeItem("isAdminAuthenticated");
     setLocation("/admin/login");
   };

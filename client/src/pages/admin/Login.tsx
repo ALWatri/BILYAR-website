@@ -37,13 +37,27 @@ export default function Login() {
   const t = translations[lang].admin;
   const isRtl = lang === "ar";
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock authentication
-    if (email === "admin@bilyar.com" && password === "admin") {
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast({
+          title: t.login_failed,
+          description: data.message || t.invalid_credentials,
+          variant: "destructive",
+        });
+        return;
+      }
       localStorage.setItem("isAdminAuthenticated", "true");
       setLocation("/admin");
-    } else {
+    } catch {
       toast({
         title: t.login_failed,
         description: t.invalid_credentials,

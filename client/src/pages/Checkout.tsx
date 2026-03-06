@@ -165,7 +165,11 @@ export default function Checkout() {
       if (paymentData.demo) {
         try { localStorage.removeItem(CHECKOUT_DRAFT_KEY); } catch {}
         clearCart();
-        navigate(`/order/success?orderId=${order.id}&demo=true`);
+        if (paymentData.paymentUrl) {
+          window.location.href = paymentData.paymentUrl;
+        } else {
+          navigate(`/order/success?orderId=${order.id}&demo=true`);
+        }
         return;
       }
 

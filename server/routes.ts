@@ -8,6 +8,15 @@ import type { IStorage } from "./storage";
 import { getFirebaseStorageBucket } from "./firebase-init";
 import { translateToEnglish } from "./translate";
 import { generateInvoicePdf } from "./invoice-pdf";
+import {
+  verifyInvoiceToken,
+  verifyAdminSession,
+  getSignedInvoicePath,
+  signInvoiceId,
+  createAdminSession,
+  checkAdminCredentials,
+  getAdminSessionCookieName,
+} from "./invoice-auth";
 import { isWhatsAppConfigured, sendTemplate, sendDocument, sendText } from "./whatsapp";
 import { z } from "zod";
 import nodemailer from "nodemailer";
@@ -343,6 +352,12 @@ export async function registerRoutes(
   app.get("/api/orders/:id/invoice-pdf", async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
+    const token = typeof req.query.t === "string" ? req.query.t : undefined;
+    const hasValidToken = verifyInvoiceToken(id, token);
+    const hasAdminSession = verifyAdminSession(req.headers.cookie);
+    if (!hasValidToken && !hasAdminSession) {
+      return res.status(403).json({ message: "Invalid or missing invoice access token" });
+    }
     const order = await storage.getOrder(id);
     if (!order) return res.status(404).json({ message: "Order not found" });
     const download = req.query.dl === "1" || req.query.download === "1";
@@ -361,6 +376,32 @@ export async function registerRoutes(
       console.error("Invoice PDF error:", msg, stack || "");
       res.status(500).json({ message: "Failed to generate invoice" });
     }
+  });
+
+  const cookieName = getAdminSessionCookieName();
+  const isProduction = process.env.NODE_ENV === "production";
+
+  app.post("/api/admin/login", express.json(), (req, res) => {
+    const body = req.body as { email?: string; password?: string };
+    const email = typeof body?.email === "string" ? body.email : "";
+    const password = typeof body?.password === "string" ? body.password : "";
+    if (!checkAdminCredentials(email, password)) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+    const session = createAdminSession();
+    res.cookie(cookieName, session, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
+    });
+    return res.json({ ok: true });
+  });
+
+  app.post("/api/admin/logout", (_req, res) => {
+    res.clearCookie(cookieName, { path: "/" });
+    return res.json({ ok: true });
   });
 
   const createOrderSchema = z.object({
@@ -924,7 +965,8 @@ export async function registerRoutes(
     }
 
     if (isPublicUrl) {
-      const invoiceUrl = `${publicBase}/api/orders/${orderId}/invoice-pdf`;
+      const invoicePath = getSignedInvoicePath(orderId, publicBase, true);
+      const invoiceUrl = `${publicBase}${invoicePath}`;
       const docRes = await sendDocument(
         order.customerPhone,
         invoiceUrl,
@@ -1050,7 +1092,7 @@ export async function registerRoutes(
       if (!TAP_API_KEY) {
         return res.json({
           demo: true,
-          paymentUrl: `${getBaseUrl(req)}/order/success?orderId=${orderId}&demo=true`
+          paymentUrl: `${getBaseUrl(req)}/order/success?orderId=${orderId}&t=${encodeURIComponent(signInvoiceId(orderId))}&demo=true`
         });
       }
 
@@ -1146,7 +1188,7 @@ export async function registerRoutes(
             await storage.updateOrder(id, { inventoryAdjusted: true } as any);
           }
           sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
-          return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
+          return res.redirect(`${baseUrl}/order/success?orderId=${orderId}&t=${encodeURIComponent(signInvoiceId(id))}`);
         }
         if (charge?.status === "DECLINED" || charge?.status === "CANCELLED" || charge?.status === "FAILED") {
           await storage.updateOrderPayment(id, String(tap_id), "failed");
@@ -1196,7 +1238,7 @@ export async function registerRoutes(
       if (!DEEMA_API_KEY) {
         return res.json({
           demo: true,
-          paymentUrl: `${getBaseUrl(req)}/order/success?orderId=${orderId}&demo=true`
+          paymentUrl: `${getBaseUrl(req)}/order/success?orderId=${orderId}&t=${encodeURIComponent(signInvoiceId(orderId))}&demo=true`
         });
       }
 
@@ -1280,7 +1322,7 @@ export async function registerRoutes(
       await storage.updateOrder(id, { inventoryAdjusted: true } as any);
     }
     sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
-    return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
+    return res.redirect(`${baseUrl}/order/success?orderId=${orderId}&t=${encodeURIComponent(signInvoiceId(id))}`);
   });
 
   app.post("/api/payment/deema/webhook", async (req, res) => {

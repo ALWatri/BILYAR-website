@@ -21,8 +21,9 @@ function getDriverEnglish(order: OrderWithItems) {
     customerCityEn?: string | null;
     customerCountryEn?: string | null;
   };
+  const name = (o.customerNameEn ?? order.customerName)?.trim();
   return {
-    name: toEnglishText(o.customerNameEn ?? order.customerName, "Customer"),
+    name: name || "—",
     address: o.customerAddressEn ? toEnglishText(o.customerAddressEn, "—") : addressToEnglish(order.customerAddress),
     city: toEnglishCity(o.customerCityEn ?? order.customerCity),
     country: toEnglishText(o.customerCountryEn ?? order.customerCountry, "Kuwait"),
@@ -123,16 +124,30 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
 
     // BILL TO (left) | Order # + Date + Status (right)
     doc.fontSize(9).fillColor(MUTED).font("Helvetica-Bold").text("BILL TO", contentLeft);
-    doc.y += 4;
+    doc.y += 6;
     doc.fontSize(10).fillColor(INK).font("Helvetica").text(driver.name, contentLeft, doc.y, { width: 280 });
-    doc.fontSize(9).text(`${driver.address}\n${driver.city}, ${driver.country}\nPhone: ${safeStr(order?.customerPhone)}\nEmail: ${safeStr(order?.customerEmail)}`, contentLeft, doc.y, { width: 280 });
+    doc.y += 14;
+    const addressLine = driver.address !== "—" ? driver.address : "";
+    const cityCountry = [driver.city, driver.country].filter(Boolean).join(", ");
+    doc.fontSize(9).fillColor(INK).font("Helvetica");
+    if (addressLine) {
+      doc.text(addressLine, contentLeft, doc.y, { width: 280 });
+      doc.y += 12;
+    }
+    if (cityCountry) {
+      doc.text(cityCountry, contentLeft, doc.y, { width: 280 });
+      doc.y += 12;
+    }
+    doc.text(`Phone: ${safeStr(order?.customerPhone)}`, contentLeft, doc.y, { width: 280 });
+    doc.y += 12;
+    doc.text(`Email: ${safeStr(order?.customerEmail)}`, contentLeft, doc.y, { width: 280 });
     const billToBottom = doc.y;
 
     doc.y = 50 + (logoPath ? logoHeight + 8 : 28) + 12;
     doc.fontSize(9).fillColor(INK);
     doc.text(`Order # ${safeStr(order?.orderNumber)}`, contentRight, doc.y, { width: 180, align: "right" });
     doc.y += 14;
-    doc.text(`Date: ${formatDate(safeStr(order?.createdAt))}`, contentRight, doc.y, { width: 180, align: "right" });
+    doc.text(`Date of issue: ${formatDate(safeStr(order?.createdAt))}`, contentRight, doc.y, { width: 180, align: "right" });
     doc.y += 14;
     doc.fillColor(EMERALD).text("Status: Paid", contentRight, doc.y, { width: 180, align: "right" });
 
@@ -144,6 +159,7 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     const col3 = contentLeft + 340;
     const col4 = contentRight - 80;
     const th = doc.y;
+    const ROW_HEIGHT = 20;
     doc.rect(contentLeft, th, contentWidth, 22).fill(EMERALD);
     doc.fontSize(9).fillColor("#ffffff").font("Helvetica-Bold");
     doc.text("DESCRIPTION", col1 + 8, th + 6);
@@ -152,7 +168,7 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     doc.text("TOTAL", col4, th + 6);
     doc.y = th + 28;
 
-    // Table rows
+    // Table rows — fixed row height for consistent spacing
     doc.fontSize(10).fillColor(INK).font("Helvetica");
     for (const item of items) {
       const price = safeNum(item?.price, 0);
@@ -162,24 +178,25 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
       doc.text(price.toFixed(3) + " KWD", col2, doc.y);
       doc.text(String(qty), col3, doc.y);
       doc.text(lineTotal + " KWD", col4, doc.y);
-      doc.y += 18;
+      doc.y += ROW_HEIGHT;
     }
-    doc.y += 12;
+    doc.y += 14;
 
-    // Summary (right-aligned)
-    const sumLeft = contentRight - 200;
-    doc.fontSize(10).fillColor(INK);
-    doc.text("Subtotal", sumLeft, doc.y);
-    doc.text(subtotal.toFixed(3) + " KWD", contentRight, doc.y);
-    doc.y += 14;
-    doc.text("Delivery", sumLeft, doc.y);
-    doc.text(shippingCost.toFixed(3) + " KWD", contentRight, doc.y);
-    doc.y += 14;
-    doc.moveTo(sumLeft, doc.y).lineTo(contentRight, doc.y).strokeColor("#E7E1D4").stroke();
-    doc.y += 10;
+    // Summary — Subtotal, Delivery, Total stacked with values close to labels
+    const sumLabelX = contentRight - 220;
+    const sumValueX = contentRight - 95;
+    doc.fontSize(10).fillColor(INK).font("Helvetica");
+    doc.text("Subtotal", sumLabelX, doc.y);
+    doc.text(subtotal.toFixed(3) + " KWD", sumValueX, doc.y);
+    doc.y += 16;
+    doc.text("Delivery", sumLabelX, doc.y);
+    doc.text(shippingCost.toFixed(3) + " KWD", sumValueX, doc.y);
+    doc.y += 16;
+    doc.moveTo(sumLabelX, doc.y).lineTo(contentRight, doc.y).strokeColor("#E7E1D4").stroke();
+    doc.y += 12;
     doc.fontSize(12).fillColor(EMERALD).font("Helvetica-Bold");
-    doc.text("Total", sumLeft, doc.y);
-    doc.text(total.toFixed(3) + " KWD", contentRight, doc.y);
+    doc.text("Total", sumLabelX, doc.y);
+    doc.text(total.toFixed(3) + " KWD", sumValueX, doc.y);
     doc.y += 28;
 
     // PAYMENT DETAILS - left-aligned, full width for readability
@@ -191,24 +208,26 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     doc.text(`Method: ${pm}`, contentLeft, doc.y, { width: contentWidth });
     doc.y += 14;
     doc.text(`Transaction: ${pid}`, contentLeft, doc.y, { width: contentWidth });
-    doc.y += 28;
+    doc.y += 24;
 
-    // Divider
-    doc.moveTo(contentLeft, doc.y).lineTo(contentRight, doc.y).strokeColor(GOLD).opacity(0.6).stroke().opacity(1);
-    doc.y += 20;
+    // Footer fixed at very bottom of page
+    const footerThanksY = pageH - margin - 58;
+    const footerContactY = pageH - margin - 32;
 
-    // Thank you — elegant closing line
-    doc.fontSize(18).fillColor(INK).font("Helvetica-Oblique").text("We are honoured by your trust.", contentLeft, doc.y, { align: "center", width: contentWidth });
-    doc.y += 20;
+    // Divider above footer
+    doc.moveTo(contentLeft, footerThanksY - 22).lineTo(contentRight, footerThanksY - 22).strokeColor(GOLD).opacity(0.6).stroke().opacity(1);
 
-    // Contact at very bottom
+    // Thank you — fixed position
+    doc.fontSize(18).fillColor(INK).font("Helvetica-Oblique").text("We are honoured by your trust.", contentLeft, footerThanksY, { align: "center", width: contentWidth });
+
+    // Contact — fixed at very bottom
     const siteUrl = process.env.SITE_URL || "https://bilyarofficial.com";
     const siteDisplay = siteUrl.replace(/^https?:\/\//, "");
     const storePhone = settings?.storePhone || "+965 96665735";
     const storeEmail = settings?.storeEmail || "info@bilyarofficial.com";
     doc.fontSize(10).fillColor(MUTED).font("Helvetica").text(
       `${siteDisplay} • ${storePhone} • ${storeEmail}`,
-      contentLeft, doc.y, { align: "center", width: contentWidth }
+      contentLeft, footerContactY, { align: "center", width: contentWidth }
     );
 
     doc.end();

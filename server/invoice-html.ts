@@ -10,8 +10,9 @@ function getDriverEnglish(order: OrderWithItems) {
     customerCityEn?: string | null;
     customerCountryEn?: string | null;
   };
+  const name = (o.customerNameEn ?? order.customerName)?.trim();
   return {
-    name: toEnglishText(o.customerNameEn ?? order.customerName, "Customer"),
+    name: name || "—",
     address: o.customerAddressEn ? toEnglishText(o.customerAddressEn, "—") : addressToEnglish(order.customerAddress),
     city: toEnglishCity(o.customerCityEn ?? order.customerCity),
     country: toEnglishText(o.customerCountryEn ?? order.customerCountry, "Kuwait"),
@@ -70,10 +71,10 @@ export function getInvoiceHtml(order: OrderWithItems, settings?: Settings | null
 :root{--emerald:#0B3F34;--emerald-dark:#072E26;--gold:#C8A96A;--ivory:#F7F4EC;--ink:#1F1F1F;--muted:#6D6D6D}
 *{box-sizing:border-box}
 body{margin:0;background:var(--emerald-dark);font-family:Inter,sans-serif;padding:24px;min-height:100vh;display:flex;align-items:center;justify-content:center}
-.paper{width:210mm;min-height:297mm;background:var(--ivory);border:12px solid var(--emerald);position:relative;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.paper{width:210mm;min-height:297mm;background:var(--ivory);border:12px solid var(--emerald);position:relative;box-shadow:0 20px 60px rgba(0,0,0,.5);display:flex;flex-direction:column}
 .paper::before{content:"";position:absolute;inset:18px;border:1px solid var(--gold)}
 .paper::after{content:"";position:absolute;inset:22px;border:1px solid var(--emerald)}
-.wrap{position:relative;padding:48px;z-index:2}
+.wrap{position:relative;padding:48px;z-index:2;flex:1;display:flex;flex-direction:column}
 .logo{font-family:"Cormorant Garamond",serif;font-size:42px;font-weight:600;color:var(--gold);margin:0;text-align:center;letter-spacing:.08em}
 .logo-img{display:block;margin:0 auto;height:48px;width:auto}
 .logo-img-wrap{margin:0;text-align:center}
@@ -91,15 +92,18 @@ thead th.num{text-align:right}
 tbody td{padding:12px 14px;border-bottom:1px solid #E7E1D4;font-size:12px;color:var(--ink)}
 tbody td.num{text-align:right}
 .summary-wrap{display:flex;justify-content:flex-end;margin-bottom:28px}
-.summary{width:240px}
-.summary .row{display:flex;justify-content:space-between;padding:6px 0;font-size:12px}
-.summary .total-row{border-top:1px solid #E7E1D4;margin-top:8px;padding-top:10px;font-size:14px;font-weight:600;color:var(--emerald)}
+.summary{width:220px;display:grid;grid-template-columns:1fr auto;gap:0 20px;align-items:center}
+.summary .row{display:contents}
+.summary .row span{padding:6px 0;font-size:12px;color:var(--ink)}
+.summary .total-row span{border-top:1px solid #E7E1D4;margin-top:8px;padding-top:10px;font-size:14px;font-weight:600;color:var(--emerald)}
+.summary .total-row span:first-child{border-top:1px solid #E7E1D4;padding-top:10px;margin-top:8px}
 .payment-section{margin-bottom:28px}
 .payment-section h4{font-size:10px;letter-spacing:.15em;color:var(--muted);margin:0 0 8px;font-weight:600}
 .payment-section p{margin:0 0 4px;font-size:12px;color:var(--ink)}
 .divider{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:24px 0;opacity:.6}
-.thanks{font-family:Caveat,sans-serif;font-size:28px;color:var(--ink);text-align:center;margin:0 0 8px}
-.contact-footer{font-size:11px;color:var(--muted);text-align:center;letter-spacing:.08em;margin-top:24px;padding-top:16px}
+.thanks{font-family:Caveat,sans-serif;font-size:28px;color:var(--ink);text-align:center;margin:0}
+.footer-spacer{flex:1;min-height:40px}
+.contact-footer{font-size:11px;color:var(--muted);text-align:center;letter-spacing:.08em;padding-top:16px}
 </style>
 </head>
 <body>
@@ -110,14 +114,14 @@ tbody td.num{text-align:right}
 <div class="bill-to">
 <h4>BILL TO</h4>
 <p><strong>${escapeHtml(driver.name)}</strong></p>
-<p>${escapeHtml(driver.address)}</p>
+${driver.address !== "—" ? `<p>${escapeHtml(driver.address)}</p>` : ""}
 <p>${escapeHtml(driver.city)}, ${escapeHtml(driver.country)}</p>
 <p>Phone: ${escapeHtml(order.customerPhone)}</p>
 <p>Email: ${escapeHtml(order.customerEmail || "—")}</p>
 </div>
 <div class="invoice-meta">
 <p>Order # <strong>${escapeHtml(order.orderNumber)}</strong></p>
-<p>Date: <strong>${formatDate(order.createdAt)}</strong></p>
+<p>Date of issue: <strong>${formatDate(order.createdAt)}</strong></p>
 <p>Status: <strong>Paid</strong></p>
 </div>
 </div>
@@ -146,6 +150,7 @@ ${itemsHtml}
 <p>Method: <strong>${escapeHtml(paymentMethod)}</strong></p>
 <p>Transaction: <strong>${paymentId}</strong></p>
 </div>
+<div class="footer-spacer"></div>
 <div class="divider"></div>
 <p class="thanks">We are honoured by your trust.</p>
 <footer class="contact-footer">${siteDisplay} • ${storePhone} • ${storeEmail}</footer>
