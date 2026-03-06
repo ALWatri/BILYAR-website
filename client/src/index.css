@@ -54,7 +54,7 @@
   
   --font-sans: 'Inter', sans-serif;
   --font-serif: var(--font-rigot, 'Playfair Display'), serif;
-  --font-arabic: 'Amiri', serif;
+  --font-arabic: 'Cairo', sans-serif;
   
   --radius: 0rem; 
 
