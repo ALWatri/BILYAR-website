@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import type { Order, OrderItem, Settings } from "@shared/schema";
 import { getInvoiceHtml } from "./invoice-html";
+import { toEnglishCity, toEnglishText } from "./invoice-locale";
 
 type OrderWithItems = Order & { items: OrderItem[] };
 
@@ -11,7 +12,7 @@ const IVORY = "#F7F4EC";
 const INK = "#1F1F1F";
 const MUTED = "#6D6D6D";
 
-function getDriver(order: OrderWithItems) {
+function getDriverEnglish(order: OrderWithItems) {
   const o = order as OrderWithItems & {
     customerNameEn?: string | null;
     customerAddressEn?: string | null;
@@ -19,10 +20,10 @@ function getDriver(order: OrderWithItems) {
     customerCountryEn?: string | null;
   };
   return {
-    name: o.customerNameEn ?? order.customerName,
-    address: o.customerAddressEn ?? order.customerAddress,
-    city: o.customerCityEn ?? order.customerCity,
-    country: o.customerCountryEn ?? order.customerCountry,
+    name: toEnglishText(o.customerNameEn ?? order.customerName, "Customer"),
+    address: toEnglishText(o.customerAddressEn ?? order.customerAddress, "-"),
+    city: toEnglishCity(o.customerCityEn ?? order.customerCity),
+    country: toEnglishText(o.customerCountryEn ?? order.customerCountry, "Kuwait"),
   };
 }
 
@@ -50,7 +51,7 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    const driver = getDriver(order);
+    const driver = getDriverEnglish(order);
     const pageW = 595;
     const pageH = 842;
     const margin = 24;
@@ -84,11 +85,11 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     doc.fontSize(11).fillColor(INK).font("Helvetica").text("INVOICE", contentLeft, doc.y, { align: "center", width: contentWidth });
     doc.y += 40;
 
-    // BILL TO (left) | Invoice meta (right)
+    // BILL TO (left) | Invoice meta (right) - ASCII-only for PDFKit
     doc.fontSize(9).fillColor(MUTED).font("Helvetica-Bold").text("BILL TO", contentLeft);
     doc.y += 4;
-    doc.fontSize(10).fillColor(INK).text(driver.name, contentLeft);
-    doc.fontSize(9).text(`${driver.address}\n${driver.city}, ${driver.country}\n${order.customerPhone}\n${order.customerEmail || "—"}`, contentLeft);
+    doc.fontSize(10).fillColor(INK).font("Helvetica").text(driver.name, contentLeft, { width: 280 });
+    doc.fontSize(9).text(`${driver.address}\n${driver.city}, ${driver.country}\n${order.customerPhone}\n${order.customerEmail || "-"}`, contentLeft, { width: 280 });
     const billToBottom = doc.y;
 
     doc.y = 50 + 28 + 12;
@@ -143,14 +144,15 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     doc.text(order.total.toFixed(3) + " KWD", contentRight, doc.y);
     doc.y += 28;
 
-    // PAYMENT DETAILS
-    doc.fontSize(9).fillColor(MUTED).font("Helvetica-Bold").text("PAYMENT DETAILS");
+    // PAYMENT DETAILS - left-aligned, full width for readability
+    doc.fontSize(9).fillColor(MUTED).font("Helvetica-Bold").text("PAYMENT DETAILS", contentLeft);
     doc.y += 6;
     const pm = paymentMethodLabel((order as { paymentMethod?: string }).paymentMethod);
-    const pid = (order as { paymentId?: string }).paymentId || "—";
+    const pid = String((order as { paymentId?: string }).paymentId || "-");
     doc.fontSize(10).fillColor(INK).font("Helvetica");
-    doc.text(`Method: ${pm}`);
-    doc.text(`Transaction: ${pid}`);
+    doc.text(`Method: ${pm}`, contentLeft, doc.y, { width: contentWidth });
+    doc.y += 14;
+    doc.text(`Transaction: ${pid}`, contentLeft, doc.y, { width: contentWidth });
     doc.y += 28;
 
     // Divider

@@ -482,10 +482,10 @@ export async function registerRoutes(
           customerAddress: data.customer.address,
           customerCity: data.customer.city,
           customerCountry: data.customer.country,
-          customerNameEn: customerNameEn !== data.customer.name ? customerNameEn : null,
-          customerAddressEn: customerAddressEn !== data.customer.address ? customerAddressEn : null,
-          customerCityEn: customerCityEn !== data.customer.city ? customerCityEn : null,
-          customerCountryEn: customerCountryEn !== data.customer.country ? customerCountryEn : null,
+          customerNameEn: isManual ? null : customerNameEn,
+          customerAddressEn: isManual ? null : customerAddressEn,
+          customerCityEn: isManual ? null : customerCityEn,
+          customerCountryEn: isManual ? null : customerCountryEn,
           status: "Pending",
           paymentMethod: data.paymentMethod ?? "tap",
           paymentStatus: isManual ? "manual" : "pending",
@@ -494,6 +494,20 @@ export async function registerRoutes(
         },
         itemsWithNotesEn
       );
+
+      // Reduce inventory for products with stockBySize (ordered by available size, not custom)
+      for (const item of data.items) {
+        const p = productsById.get(item.productId);
+        if (!p || !item.size) continue;
+        const stock = (p as { stockBySize?: Record<string, number> | null }).stockBySize;
+        if (!stock || typeof stock !== "object") continue;
+        const current = Number(stock[item.size]) ?? 0;
+        if (current <= 0) continue;
+        const next = Math.max(0, current - item.quantity);
+        await storage.updateProduct(item.productId, {
+          stockBySize: { ...stock, [item.size]: next },
+        });
+      }
 
       res.status(201).json(order);
     } catch (error) {

@@ -1,8 +1,9 @@
 import type { Order, OrderItem, Settings } from "@shared/schema";
+import { toEnglishCity, toEnglishText } from "./invoice-locale";
 
 type OrderWithItems = Order & { items: OrderItem[] };
 
-function getDriver(order: OrderWithItems) {
+function getDriverEnglish(order: OrderWithItems) {
   const o = order as OrderWithItems & {
     customerNameEn?: string | null;
     customerAddressEn?: string | null;
@@ -10,10 +11,10 @@ function getDriver(order: OrderWithItems) {
     customerCountryEn?: string | null;
   };
   return {
-    name: o.customerNameEn ?? order.customerName,
-    address: o.customerAddressEn ?? order.customerAddress,
-    city: o.customerCityEn ?? order.customerCity,
-    country: o.customerCountryEn ?? order.customerCountry,
+    name: toEnglishText(o.customerNameEn ?? order.customerName, "Customer"),
+    address: toEnglishText(o.customerAddressEn ?? order.customerAddress, "—"),
+    city: toEnglishCity(o.customerCityEn ?? order.customerCity),
+    country: toEnglishText(o.customerCountryEn ?? order.customerCountry, "Kuwait"),
   };
 }
 
@@ -33,7 +34,7 @@ function paymentMethodLabel(method: string | undefined): string {
 }
 
 export function getInvoiceHtml(order: OrderWithItems, settings?: Settings | null): string {
-  const driver = getDriver(order);
+  const driver = getDriverEnglish(order);
   const siteUrl = process.env.SITE_URL || "https://bilyarofficial.com";
   const storeEmail = escapeHtml(settings?.storeEmail || "info@bilyarofficial.com");
   const storePhone = escapeHtml(settings?.storePhone || "+965 XXXXXXXX");
