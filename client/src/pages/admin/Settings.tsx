@@ -224,20 +224,10 @@ export default function Settings() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {isRtl ? "توصيل مجاني تلقائياً عند شراء قطعتين أو أكثر." : "Free delivery is applied automatically when 2+ items are purchased."}
+            </p>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t.free_shipping_threshold}</Label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    value={storeSettings.freeShippingThreshold}
-                    onChange={e => setStoreSettings(s => ({ ...s, freeShippingThreshold: e.target.value }))}
-                    className="rounded-none pr-16"
-                    data-testid="input-free-shipping"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">KWD</span>
-                </div>
-              </div>
               <div className="space-y-2">
                 <Label>{t.default_shipping_cost}</Label>
                 <div className="relative">
@@ -250,6 +240,9 @@ export default function Settings() {
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">KWD</span>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  {isRtl ? "يُطبَّق عندما يكون عدد القطع أقل من ٢." : "Applied when fewer than 2 items in cart."}
+                </p>
               </div>
             </div>
           </CardContent>

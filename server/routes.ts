@@ -11,6 +11,7 @@ import { generateInvoicePdf } from "./invoice-pdf";
 import {
   verifyInvoiceToken,
   verifyAdminSession,
+  verifyAdminSessionValue,
   getSignedInvoicePath,
   signInvoiceId,
   createAdminSession,
@@ -354,7 +355,8 @@ export async function registerRoutes(
     if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
     const token = typeof req.query.t === "string" ? req.query.t : undefined;
     const hasValidToken = verifyInvoiceToken(id, token);
-    const hasAdminSession = verifyAdminSession(req.headers.cookie);
+    const bearer = req.headers.authorization?.replace(/^Bearer\s+/i, "").trim();
+    const hasAdminSession = verifyAdminSession(req.headers.cookie) || verifyAdminSessionValue(bearer);
     if (!hasValidToken && !hasAdminSession) {
       return res.status(403).json({ message: "Invalid or missing invoice access token" });
     }
@@ -396,7 +398,7 @@ export async function registerRoutes(
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
     });
-    return res.json({ ok: true });
+    return res.json({ ok: true, token: session });
   });
 
   app.post("/api/admin/logout", (_req, res) => {
@@ -405,7 +407,8 @@ export async function registerRoutes(
   });
 
   app.get("/api/orders/:id/invoice-pdf-url", (req, res) => {
-    if (!verifyAdminSession(req.headers.cookie)) {
+    const hasAdminSession = verifyAdminSession(req.headers.cookie) || verifyAdminSessionValue(req.headers.authorization?.replace(/^Bearer\s+/i, "").trim());
+    if (!hasAdminSession) {
       return res.status(403).json({ message: "Invalid or missing invoice access token" });
     }
     const id = parseInt(req.params.id);
@@ -765,9 +768,9 @@ export async function registerRoutes(
       if (data.items && data.items.length > 0) {
         const subtotal = data.items.reduce((acc, i) => acc + i.price * i.quantity, 0);
         const s = await storage.getSettings();
-        const threshold = s?.freeShippingThreshold ?? 90;
-        const defaultCost = s?.defaultShippingCost ?? 5;
-        const shippingCost = subtotal >= threshold ? 0 : defaultCost;
+        const defaultCost = s?.defaultShippingCost ?? 3;
+        const itemCount = data.items.reduce((acc, i) => acc + i.quantity, 0);
+        const shippingCost = itemCount >= 2 ? 0 : defaultCost;
         const total = subtotal + shippingCost;
         orderData.shippingCost = shippingCost;
         orderData.total = total;

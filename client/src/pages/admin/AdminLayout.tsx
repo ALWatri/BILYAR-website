@@ -41,6 +41,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const handleLogout = () => {
     fetch("/api/admin/logout", { method: "POST", credentials: "include" }).catch(() => {});
     localStorage.removeItem("isAdminAuthenticated");
+    try {
+      sessionStorage.removeItem("bilyar_admin_token");
+    } catch (_) {}
     setLocation("/admin/login");
   };
 

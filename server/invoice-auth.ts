@@ -42,11 +42,17 @@ export function verifyAdminSession(cookieHeader: string | undefined): boolean {
   const prefix = SESSION_COOKIE + "=";
   const match = cookieHeader.split(/;\s*/).find((c) => c.startsWith(prefix));
   const value = match?.slice(prefix.length)?.trim();
-  if (!value) return false;
-  const lastDot = value.lastIndexOf(".");
+  return verifyAdminSessionValue(value);
+}
+
+/** Verify raw session value (from cookie or Authorization Bearer). */
+export function verifyAdminSessionValue(value: string | undefined): boolean {
+  if (!value || typeof value !== "string") return false;
+  const trimmed = value.trim();
+  const lastDot = trimmed.lastIndexOf(".");
   if (lastDot === -1) return false;
-  const payload = value.slice(0, lastDot);
-  const sig = value.slice(lastDot + 1);
+  const payload = trimmed.slice(0, lastDot);
+  const sig = trimmed.slice(lastDot + 1);
   const expected = hmac(payload);
   if (expected.length !== sig.length || !crypto.timingSafeEqual(Buffer.from(expected, "utf8"), Buffer.from(sig, "utf8"))) return false;
   const parts = payload.split(":");

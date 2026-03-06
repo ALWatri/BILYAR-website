@@ -55,6 +55,12 @@ export default function Login() {
         });
         return;
       }
+      const data = await res.json().catch(() => ({}));
+      if (data.token) {
+        try {
+          sessionStorage.setItem("bilyar_admin_token", data.token);
+        } catch (_) {}
+      }
       localStorage.setItem("isAdminAuthenticated", "true");
       setLocation("/admin");
     } catch {

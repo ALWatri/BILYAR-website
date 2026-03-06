@@ -311,8 +311,14 @@ export default function Orders() {
 
   const openInvoicePdf = async (order: OrderWithItems, download = false) => {
     try {
+      let token: string | null = null;
+      try {
+        token = sessionStorage.getItem("bilyar_admin_token");
+      } catch (_) {}
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       const url = `/api/orders/${order.id}/invoice-pdf${download ? "?dl=1" : ""}`;
-      const res = await fetch(url, { credentials: "include" });
+      const res = await fetch(url, { credentials: "include", headers });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         const msg = data.message || (isRtl ? "يرجى تسجيل الدخول مرة أخرى لعرض الفاتورة." : "Please log in again to view the invoice.");
