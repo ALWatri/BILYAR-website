@@ -407,6 +407,33 @@ export async function registerRoutes(
     return res.json({ ok: true });
   });
 
+  app.get("/api/admin/orders/:id/invoice-pdf", async (req, res) => {
+    const bearer = req.headers.authorization?.replace(/^Bearer\s+/i, "").trim();
+    const hasAdminSession = verifyAdminSession(req.headers.cookie) || verifyAdminSessionValue(bearer);
+    if (!hasAdminSession) {
+      return res.status(403).json({ message: "Invalid or missing invoice access token" });
+    }
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
+    const order = await storage.getOrder(id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    const download = req.query.dl === "1" || req.query.download === "1";
+    try {
+      const settings = await storage.getSettings();
+      const pdf = await generateInvoicePdf(order, settings);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        download ? `attachment; filename="invoice-${order.orderNumber}.pdf"` : `inline; filename="invoice-${order.orderNumber}.pdf"`
+      );
+      res.send(pdf);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Invoice PDF error:", msg);
+      res.status(500).json({ message: "Failed to generate invoice" });
+    }
+  });
+
   app.get("/api/orders/:id/invoice-pdf-url", (req, res) => {
     const hasAdminSession = verifyAdminSession(req.headers.cookie) || verifyAdminSessionValue(req.headers.authorization?.replace(/^Bearer\s+/i, "").trim());
     if (!hasAdminSession) {
