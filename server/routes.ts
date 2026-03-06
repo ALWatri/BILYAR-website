@@ -404,6 +404,18 @@ export async function registerRoutes(
     return res.json({ ok: true });
   });
 
+  app.get("/api/orders/:id/invoice-pdf-url", (req, res) => {
+    if (!verifyAdminSession(req.headers.cookie)) {
+      return res.status(403).json({ message: "Invalid or missing invoice access token" });
+    }
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
+    const baseUrl = getBaseUrl(req).replace(/\/$/, "");
+    const download = req.query.dl === "1" || req.query.download === "1";
+    const path = getSignedInvoicePath(id, baseUrl, download);
+    return res.json({ url: `${baseUrl}${path}` });
+  });
+
   const createOrderSchema = z.object({
     customer: z.object({
       name: z.string().min(1),
@@ -813,6 +825,9 @@ export async function registerRoutes(
 
   app.get("/api/customers", async (_req, res) => {
     const orders = await storage.getOrders();
+    const PAID_STATUSES = ["Paid", "Processing", "Shipped", "Delivered"];
+    const isPaid = (o: { status?: string }) => PAID_STATUSES.includes(o.status || "");
+
     const customerMap = new Map<string, {
       id: string;
       email: string;
@@ -826,14 +841,17 @@ export async function registerRoutes(
 
     for (const order of orders) {
       const key = getCustomerKey(order);
+      const paid = isPaid(order);
       const existing = customerMap.get(key);
       if (existing) {
-        existing.totalOrders += 1;
-        existing.totalSpent += order.total;
-        if (order.createdAt > existing.lastOrderDate) {
-          existing.lastOrderDate = order.createdAt;
-          existing.name = order.customerName;
-          existing.phone = order.customerPhone;
+        if (paid) {
+          existing.totalOrders += 1;
+          existing.totalSpent += order.total;
+          if (order.createdAt > existing.lastOrderDate) {
+            existing.lastOrderDate = order.createdAt;
+            existing.name = order.customerName;
+            existing.phone = order.customerPhone;
+          }
         }
         existing.orders.push(order);
       } else {
@@ -842,9 +860,9 @@ export async function registerRoutes(
           email: order.customerEmail,
           name: order.customerName,
           phone: order.customerPhone,
-          totalOrders: 1,
-          totalSpent: order.total,
-          lastOrderDate: order.createdAt,
+          totalOrders: paid ? 1 : 0,
+          totalSpent: paid ? order.total : 0,
+          lastOrderDate: paid ? order.createdAt : "",
           orders: [order],
         });
       }

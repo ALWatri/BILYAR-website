@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { AdminLayout } from "./AdminLayout";
+import { useLocation } from "wouter";
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
@@ -56,6 +57,7 @@ export default function Customers() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [editForm, setEditForm] = useState<{ name: string; phone: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const { data: customers = [] } = useQuery<Customer[]>({
@@ -254,6 +256,15 @@ export default function Customers() {
                                       {order.status}
                                     </Badge>
                                     <span className="font-medium">{order.total.toFixed(3)} KWD</span>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="gap-1 text-xs"
+                                      onClick={() => setLocation(`/admin/orders?orderId=${order.id}`)}
+                                    >
+                                      <Eye className="h-3.5 w-3.5" />
+                                      {isRtl ? "عرض الطلب كاملاً" : "View full order"}
+                                    </Button>
                                   </div>
                                 </div>
                                 <div className="space-y-2">

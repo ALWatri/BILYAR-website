@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { AdminLayout } from "./AdminLayout";
 import type { OrderWithItems } from "@/lib/data";
 import type { OrderItem } from "@/lib/data";
+import { useSearch } from "wouter";
 import { 
   Table, 
   TableBody, 
@@ -38,6 +39,8 @@ import { Label } from "@/components/ui/label";
 export default function Orders() {
   const [lang, setLang] = useState<"en" | "ar">("en");
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
+  const [detailOrderId, setDetailOrderId] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [createOrderOpen, setCreateOrderOpen] = useState(false);
   const [editForm, setEditForm] = useState<{
     customer: { name: string; email: string; phone: string; address: string; city: string; country: string };
@@ -67,6 +70,19 @@ export default function Orders() {
   const { data: orders = [] } = useQuery<OrderWithItems[]>({
     queryKey: ["/api/orders"],
   });
+
+  const search = useSearch();
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const orderIdParam = params.get("orderId");
+    if (orderIdParam) {
+      const id = parseInt(orderIdParam, 10);
+      if (!isNaN(id)) setDetailOrderId(id);
+      try {
+        window.history.replaceState({}, "", "/admin/orders");
+      } catch {}
+    }
+  }, [search]);
 
   const createOrderMutation = useMutation({
     mutationFn: async () => {
@@ -293,9 +309,19 @@ export default function Orders() {
   const itemNotesForDriver = (item: OrderWithItems["items"][0]) =>
     (item as { notesEn?: string | null }).notesEn ?? item.notes;
 
-  const openInvoicePdf = (order: OrderWithItems, download = false) => {
-    const url = `/api/orders/${order.id}/invoice-pdf${download ? "?dl=1" : ""}`;
-    window.open(url, "_blank");
+  const openInvoicePdf = async (order: OrderWithItems, download = false) => {
+    try {
+      const res = await fetch(`/api/orders/${order.id}/invoice-pdf-url${download ? "?dl=1" : ""}`, { credentials: "include" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || (isRtl ? "يرجى تسجيل الدخول مرة أخرى لعرض الفاتورة." : "Please log in again to view the invoice."));
+        return;
+      }
+      const { url } = await res.json();
+      if (url) window.open(url, "_blank");
+    } catch {
+      alert(isRtl ? "تعذر فتح الفاتورة." : "Could not open invoice.");
+    }
   };
 
   const printDeliverySlip = (order: OrderWithItems) => {
@@ -464,6 +490,12 @@ export default function Orders() {
   const successfulOrders = orders.filter((o) => successfulStatuses.includes(o.status));
   const pendingAbandonedOrders = orders.filter((o) => pendingAbandonedStatuses.includes(o.status));
 
+  const ORDER_STATUSES = ["All", "Pending", "Paid", "Processing", "Shipped", "Delivered", "Cancelled", "Unfinished"] as const;
+  const filteredOrders =
+    statusFilter === "all" || statusFilter === "All"
+      ? orders
+      : orders.filter((o) => o.status === statusFilter);
+
   const renderOrderRow = (order: OrderWithItems) => (
               <TableRow key={order.id} data-testid={`row-order-${order.id}`}>
                 <TableCell className="font-medium">{order.orderNumber}</TableCell>
@@ -484,9 +516,9 @@ export default function Orders() {
                 </TableCell>
                 <TableCell className={cn("text-right font-medium", isRtl && "text-left")}>{order.total} KWD</TableCell>
                 <TableCell className={cn("text-right", isRtl && "text-left")}>
-                  <Dialog>
+                  <Dialog open={detailOrderId === order.id} onOpenChange={(open) => { if (!open) setDetailOrderId(null); }}>
                     <DialogTrigger asChild>
-                      <Button variant="ghost" size="icon" data-testid={`button-view-order-${order.id}`}>
+                      <Button variant="ghost" size="icon" data-testid={`button-view-order-${order.id}`} onClick={() => setDetailOrderId(order.id)}>
                         <Eye className="h-4 w-4 text-gray-500 hover:text-primary" />
                       </Button>
                     </DialogTrigger>
@@ -721,7 +753,19 @@ export default function Orders() {
           <h1 className="text-3xl font-serif font-bold text-gray-900" data-testid="text-orders-title">{t.orders}</h1>
           <p className="text-gray-500">{t.manage_orders}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap items-center">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px] rounded-none" dir={isRtl ? "rtl" : "ltr"}>
+              <SelectValue placeholder={isRtl ? "نوع الطلب" : "Order status"} />
+            </SelectTrigger>
+            <SelectContent>
+              {ORDER_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s === "All" ? (isRtl ? "الكل" : "All") : s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button className="gap-2 bg-primary text-white hover:bg-primary/90" onClick={() => setCreateOrderOpen(true)}>
             <Plus className="h-4 w-4" /> {t.create_order}
           </Button>
@@ -814,45 +858,26 @@ export default function Orders() {
       </Dialog>
 
       <section className="mb-12">
-        <h2 className="text-xl font-serif font-semibold text-gray-900 mb-4">{t.successful_orders}</h2>
+        <h2 className="text-xl font-serif font-semibold text-gray-900 mb-2">
+          {statusFilter === "all" || statusFilter === "All"
+            ? (isRtl ? "جميع الطلبات" : "All orders")
+            : (isRtl ? `طلبات: ${statusFilter}` : `Orders: ${statusFilter}`)}
+        </h2>
         <p className="text-sm text-muted-foreground mb-4">
-          {isRtl ? "طلبات مدفوعة أو قيد التجهيز أو التوصيل أو التسليم." : "Paid orders and those in progress, shipped, or delivered."}
+          {filteredOrders.length} {isRtl ? "طلب" : "order(s)"}
         </p>
         <div className="bg-white border border-gray-200 rounded-sm shadow-sm">
           <Table>
             <TableHeader>{tableHeader}</TableHeader>
             <TableBody>
-              {successfulOrders.length === 0 ? (
+              {filteredOrders.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                    {isRtl ? "لا توجد طلبات ناجحة" : "No successful orders yet"}
+                    {isRtl ? "لا توجد طلبات" : "No orders"}
                   </TableCell>
                 </TableRow>
               ) : (
-                successfulOrders.map((order) => renderOrderRow(order))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-serif font-semibold text-gray-900 mb-4">{t.pending_abandoned_orders}</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          {isRtl ? "طلبات معلقة أو غير مكتملة أو ملغاة. يمكنك متابعة العملاء بعروض." : "Pending, abandoned, or cancelled. You can follow up with offers."}
-        </p>
-        <div className="bg-white border border-gray-200 rounded-sm shadow-sm">
-          <Table>
-            <TableHeader>{tableHeader}</TableHeader>
-            <TableBody>
-              {pendingAbandonedOrders.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                    {isRtl ? "لا توجد طلبات معلقة أو غير مكتملة" : "No pending or abandoned orders"}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                pendingAbandonedOrders.map((order) => renderOrderRow(order))
+                filteredOrders.map((order) => renderOrderRow(order))
               )}
             </TableBody>
           </Table>
