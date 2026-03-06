@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 import type { Order, OrderItem, Settings } from "@shared/schema";
 import { getInvoiceHtml } from "./invoice-html";
-import { toEnglishCity, toEnglishText } from "./invoice-locale";
+import { toEnglishCity, toEnglishText, addressToEnglish } from "./invoice-locale";
 
 type OrderWithItems = Order & { items: OrderItem[] };
 
@@ -23,7 +23,7 @@ function getDriverEnglish(order: OrderWithItems) {
   };
   return {
     name: toEnglishText(o.customerNameEn ?? order.customerName, "Customer"),
-    address: toEnglishText(o.customerAddressEn ?? order.customerAddress, "-"),
+    address: o.customerAddressEn ? toEnglishText(o.customerAddressEn, "—") : addressToEnglish(order.customerAddress),
     city: toEnglishCity(o.customerCityEn ?? order.customerCity),
     country: toEnglishText(o.customerCountryEn ?? order.customerCountry, "Kuwait"),
   };
@@ -118,20 +118,19 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
       doc.fontSize(32).fillColor(GOLD).font("Helvetica-Bold").text("BILYAR.", contentLeft, doc.y, { align: "center", width: contentWidth });
       doc.y += 28;
     }
-    // INVOICE
-    doc.fontSize(11).fillColor(INK).font("Helvetica").text("INVOICE", contentLeft, doc.y, { align: "center", width: contentWidth });
-    doc.y += 40;
+    // INVOICE line removed per request
+    doc.y += 16;
 
-    // BILL TO (left) | Invoice meta (right) - ASCII-only for PDFKit
+    // BILL TO (left) | Order # + Date + Status (right)
     doc.fontSize(9).fillColor(MUTED).font("Helvetica-Bold").text("BILL TO", contentLeft);
     doc.y += 4;
     doc.fontSize(10).fillColor(INK).font("Helvetica").text(driver.name, contentLeft, doc.y, { width: 280 });
-    doc.fontSize(9).text(`${driver.address}\n${driver.city}, ${driver.country}\n${safeStr(order?.customerPhone)}\n${safeStr(order?.customerEmail)}`, contentLeft, doc.y, { width: 280 });
+    doc.fontSize(9).text(`${driver.address}\n${driver.city}, ${driver.country}\nPhone: ${safeStr(order?.customerPhone)}\nEmail: ${safeStr(order?.customerEmail)}`, contentLeft, doc.y, { width: 280 });
     const billToBottom = doc.y;
 
-    doc.y = 50 + 28 + 12;
+    doc.y = 50 + (logoPath ? logoHeight + 8 : 28) + 12;
     doc.fontSize(9).fillColor(INK);
-    doc.text(`Invoice # ${safeStr(order?.orderNumber)}`, contentRight, doc.y, { width: 180, align: "right" });
+    doc.text(`Order # ${safeStr(order?.orderNumber)}`, contentRight, doc.y, { width: 180, align: "right" });
     doc.y += 14;
     doc.text(`Date: ${formatDate(safeStr(order?.createdAt))}`, contentRight, doc.y, { width: 180, align: "right" });
     doc.y += 14;
@@ -198,14 +197,14 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     doc.moveTo(contentLeft, doc.y).lineTo(contentRight, doc.y).strokeColor(GOLD).opacity(0.6).stroke().opacity(1);
     doc.y += 20;
 
-    // Thank you
-    doc.fontSize(22).fillColor(INK).font("Helvetica-Oblique").text("Thank you for your business!", contentLeft, doc.y, { align: "center", width: contentWidth });
-    doc.y += 24;
+    // Thank you — elegant closing line
+    doc.fontSize(18).fillColor(INK).font("Helvetica-Oblique").text("We are honoured by your trust.", contentLeft, doc.y, { align: "center", width: contentWidth });
+    doc.y += 20;
 
-    // Contact
+    // Contact at very bottom
     const siteUrl = process.env.SITE_URL || "https://bilyarofficial.com";
     const siteDisplay = siteUrl.replace(/^https?:\/\//, "");
-    const storePhone = settings?.storePhone || "+965 XXXXXXXX";
+    const storePhone = settings?.storePhone || "+965 96665735";
     const storeEmail = settings?.storeEmail || "info@bilyarofficial.com";
     doc.fontSize(10).fillColor(MUTED).font("Helvetica").text(
       `${siteDisplay} • ${storePhone} • ${storeEmail}`,

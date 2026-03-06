@@ -242,16 +242,16 @@ export default function Orders() {
     const a0 = normalizeSpace(arDigitsToLatin(addressRaw));
     if (!a0) return a0;
 
-    // Replace common address tokens
+    // Replace common address tokens (no \\b - Arabic word boundaries unreliable)
     let a = a0
-      .replace(/\bقطعة\b/g, "Block")
-      .replace(/\bقطعه\b/g, "Block")
-      .replace(/\bشارع\b/g, "Street")
-      .replace(/\bجادة\b/g, "Avenue")
-      .replace(/\bمنزل\b/g, "House")
-      .replace(/\bبيت\b/g, "House")
-      .replace(/\bعمارة\b/g, "Building")
-      .replace(/\bشقة\b/g, "Apt");
+      .replace(/قطعة/g, "Block")
+      .replace(/قطعه/g, "Block")
+      .replace(/شارع/g, "Street")
+      .replace(/جادة/g, "Avenue")
+      .replace(/منزل/g, "House")
+      .replace(/بيت/g, "House")
+      .replace(/عمارة/g, "Building")
+      .replace(/شقة/g, "Apt");
 
     // Area at the beginning: "العارضية ..." => "Ardiya ..."
     for (const [ar, en] of Object.entries(KUWAIT_AREA_AR_TO_EN)) {
@@ -261,13 +261,7 @@ export default function Orders() {
       }
     }
 
-    // Cleanup punctuation and spacing
-    a = a
-      .replace(/[،]/g, ",")
-      .replace(/\s*,\s*/g, ", ")
-      .replace(/\s+/g, " ")
-      .trim();
-
+    a = a.replace(/[،]/g, ",").replace(/\s*,\s*/g, ", ").replace(/\s+/g, " ").trim();
     return a;
   }
 

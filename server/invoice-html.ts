@@ -1,5 +1,5 @@
 import type { Order, OrderItem, Settings } from "@shared/schema";
-import { toEnglishCity, toEnglishText } from "./invoice-locale";
+import { toEnglishCity, toEnglishText, addressToEnglish } from "./invoice-locale";
 
 type OrderWithItems = Order & { items: OrderItem[] };
 
@@ -12,7 +12,7 @@ function getDriverEnglish(order: OrderWithItems) {
   };
   return {
     name: toEnglishText(o.customerNameEn ?? order.customerName, "Customer"),
-    address: toEnglishText(o.customerAddressEn ?? order.customerAddress, "—"),
+    address: o.customerAddressEn ? toEnglishText(o.customerAddressEn, "—") : addressToEnglish(order.customerAddress),
     city: toEnglishCity(o.customerCityEn ?? order.customerCity),
     country: toEnglishText(o.customerCountryEn ?? order.customerCountry, "Kuwait"),
   };
@@ -38,7 +38,7 @@ export function getInvoiceHtml(order: OrderWithItems, settings?: Settings | null
   const siteUrl = process.env.SITE_URL || "https://bilyarofficial.com";
   const logoUrl = siteUrl.replace(/\/$/, "") + "/images/bilyar-logo.png";
   const storeEmail = escapeHtml(settings?.storeEmail || "info@bilyarofficial.com");
-  const storePhone = escapeHtml(settings?.storePhone || "+965 XXXXXXXX");
+  const storePhone = escapeHtml(settings?.storePhone || "+965 96665735");
   const siteDisplay = escapeHtml(siteUrl.replace(/^https?:\/\//, ""));
 
   const itemsHtml = order.items
@@ -99,25 +99,24 @@ tbody td.num{text-align:right}
 .payment-section p{margin:0 0 4px;font-size:12px;color:var(--ink)}
 .divider{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:24px 0;opacity:.6}
 .thanks{font-family:Caveat,sans-serif;font-size:28px;color:var(--ink);text-align:center;margin:0 0 8px}
-.contact{font-size:11px;color:var(--muted);text-align:center;letter-spacing:.08em}
+.contact-footer{font-size:11px;color:var(--muted);text-align:center;letter-spacing:.08em;margin-top:24px;padding-top:16px}
 </style>
 </head>
 <body>
 <div class="paper">
 <div class="wrap">
 <h1 class="logo-img-wrap"><img src="${logoUrl}" alt="BILYAR" class="logo-img"/></h1>
-<p class="invoice-title">INVOICE</p>
 <div class="top-row">
 <div class="bill-to">
 <h4>BILL TO</h4>
 <p><strong>${escapeHtml(driver.name)}</strong></p>
 <p>${escapeHtml(driver.address)}</p>
 <p>${escapeHtml(driver.city)}, ${escapeHtml(driver.country)}</p>
-<p>${escapeHtml(order.customerPhone)}</p>
-<p>${escapeHtml(order.customerEmail || "—")}</p>
+<p>Phone: ${escapeHtml(order.customerPhone)}</p>
+<p>Email: ${escapeHtml(order.customerEmail || "—")}</p>
 </div>
 <div class="invoice-meta">
-<p>Invoice # <strong>${escapeHtml(order.orderNumber)}</strong></p>
+<p>Order # <strong>${escapeHtml(order.orderNumber)}</strong></p>
 <p>Date: <strong>${formatDate(order.createdAt)}</strong></p>
 <p>Status: <strong>Paid</strong></p>
 </div>
@@ -148,8 +147,8 @@ ${itemsHtml}
 <p>Transaction: <strong>${paymentId}</strong></p>
 </div>
 <div class="divider"></div>
-<p class="thanks">Thank you for your business!</p>
-<p class="contact">${siteDisplay} • ${storePhone} • ${storeEmail}</p>
+<p class="thanks">We are honoured by your trust.</p>
+<footer class="contact-footer">${siteDisplay} • ${storePhone} • ${storeEmail}</footer>
 </div>
 </div>
 </body>

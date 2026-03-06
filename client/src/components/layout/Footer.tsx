@@ -57,16 +57,13 @@ export function Footer() {
             <h3 className="text-lg font-serif font-medium mb-6 text-accent">{t.shop}</h3>
             <ul className="space-y-4">
               <li><Link href="/shop" className="hover:text-accent transition-colors text-sm uppercase tracking-wide">{t.new_arrivals}</Link></li>
-              <li><Link href="/shop?cat=dresses" className="hover:text-accent transition-colors text-sm uppercase tracking-wide">{t.dresses}</Link></li>
-              <li><Link href="/shop?cat=outerwear" className="hover:text-accent transition-colors text-sm uppercase tracking-wide">{t.outerwear}</Link></li>
-              <li><Link href="/shop?cat=accessories" className="hover:text-accent transition-colors text-sm uppercase tracking-wide">{t.accessories}</Link></li>
             </ul>
           </div>
 
           <div>
             <h3 className="text-lg font-serif font-medium mb-6 text-accent">{t.company}</h3>
             <ul className="space-y-4">
-              <li><Link href="/about" className="hover:text-accent transition-colors text-sm uppercase tracking-wide">{t.story}</Link></li>
+              <li><Link href="/about" className="hover:text-accent transition-colors text-sm uppercase tracking-wide">{t.read_story || t.story}</Link></li>
               <li><Link href="/contact" className="hover:text-accent transition-colors text-sm uppercase tracking-wide">{t.contact}</Link></li>
             </ul>
           </div>
