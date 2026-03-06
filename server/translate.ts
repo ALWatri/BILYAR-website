@@ -45,12 +45,15 @@ async function translateWithGoogle(text: string): Promise<string | null> {
 }
 
 /** Simple Arabic-to-Latin transliteration for names when translation fails. */
-const AR_TO_LATIN: Record<string, string> = {
-  ا: "a", أ: "a", آ: "a", إ: "i", ء: "'", ب: "b", ت: "t", ث: "th", ج: "j", ح: "h", خ: "kh",
-  د: "d", ذ: "dh", ر: "r", ز: "z", س: "s", ش: "sh", ص: "s", ض: "d", ط: "t", ظ: "z", ع: "a", غ: "gh",
-  ف: "f", ق: "q", ك: "k", ل: "l", م: "m", ن: "n", ه: "h", و: "w", ي: "y", ى: "a", ئ: "y", ؤ: "w",
-  َ: "a", ُ: "u", ِ: "i", ً: "an", ٌ: "un", ٍ: "in", ّ: "", ْ: "",
-};
+const AR_TO_LATIN: Record<string, string> = Object.fromEntries([
+  ["ا", "a"], ["أ", "a"], ["آ", "a"], ["إ", "i"], ["ء", "'"], ["ب", "b"], ["ت", "t"], ["ث", "th"],
+  ["ج", "j"], ["ح", "h"], ["خ", "kh"], ["د", "d"], ["ذ", "dh"], ["ر", "r"], ["ز", "z"], ["س", "s"],
+  ["ش", "sh"], ["ص", "s"], ["ض", "d"], ["ط", "t"], ["ظ", "z"], ["ع", "a"], ["غ", "gh"], ["ف", "f"],
+  ["ق", "q"], ["ك", "k"], ["ل", "l"], ["م", "m"], ["ن", "n"], ["ه", "h"], ["و", "w"], ["ي", "y"],
+  ["ى", "a"], ["ئ", "y"], ["ؤ", "w"],
+  ["\u064B", "an"], ["\u064C", "un"], ["\u064D", "in"], ["\u064E", "a"], ["\u064F", "u"], ["\u0650", "i"],
+  ["\u0651", ""], ["\u0652", ""],
+]);
 
 export function transliterateArabic(text: string): string {
   if (!text || typeof text !== "string") return "";
