@@ -314,15 +314,18 @@ export default function Orders() {
       } catch (_) {}
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const urlRes = await fetch(`/api/orders/${order.id}/invoice-pdf-url${download ? "?dl=1" : ""}`, { credentials: "include", headers });
+      const opts = { credentials: "include" as RequestCredentials, headers };
+      const urlRes = await fetch(`/api/orders/${order.id}/invoice-pdf-url${download ? "?dl=1" : ""}`, opts);
       if (!urlRes.ok) {
         const data = await urlRes.json().catch(() => ({}));
         const msg = data.message || (isRtl ? "يرجى تسجيل الدخول مرة أخرى لعرض الفاتورة." : "Please log in again to view the invoice.");
         alert(msg);
         return;
       }
-      const { url } = await urlRes.json() as { url: string };
-      const res = await fetch(url);
+      const { url } = (await urlRes.json()) as { url: string };
+      // Use path+query to stay same-origin (avoids wrong host from proxy)
+      const pdfTarget = url.startsWith("http") ? (new URL(url).pathname + new URL(url).search) : url;
+      const res = await fetch(pdfTarget, opts);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         const msg = data.message || (isRtl ? "يرجى تسجيل الدخول مرة أخرى لعرض الفاتورة." : "Please log in again to view the invoice.");
