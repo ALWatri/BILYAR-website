@@ -356,7 +356,9 @@ export async function registerRoutes(
       );
       res.send(pdf);
     } catch (err) {
-      console.error("Invoice PDF error:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      console.error("Invoice PDF error:", msg, stack || "");
       res.status(500).json({ message: "Failed to generate invoice" });
     }
   });

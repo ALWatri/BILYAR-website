@@ -42,16 +42,32 @@ function paymentMethodLabel(method: string | undefined): string {
   return method || "—";
 }
 
+function safeStr(v: unknown): string {
+  if (v == null) return "-";
+  const s = String(v).trim();
+  return s || "-";
+}
+
+function safeNum(v: unknown, fallback: number): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 /** PDFKit fallback when Puppeteer/Chromium unavailable (e.g. Render) */
 function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null): Promise<Buffer> {
   return new Promise((resolve, reject) => {
+    const items = Array.isArray(order?.items) ? order.items : [];
+    const total = safeNum(order?.total, 0);
+    const shippingCost = safeNum(order?.shippingCost, 0);
+    const subtotal = total - shippingCost;
+
     const doc = new PDFDocument({ margin: 0, size: "A4" });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    const driver = getDriverEnglish(order);
+    const driver = order ? getDriverEnglish(order) : { name: "-", address: "-", city: "Kuwait", country: "Kuwait" };
     const pageW = 595;
     const pageH = 842;
     const margin = 24;
@@ -89,14 +105,14 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     doc.fontSize(9).fillColor(MUTED).font("Helvetica-Bold").text("BILL TO", contentLeft);
     doc.y += 4;
     doc.fontSize(10).fillColor(INK).font("Helvetica").text(driver.name, contentLeft, { width: 280 });
-    doc.fontSize(9).text(`${driver.address}\n${driver.city}, ${driver.country}\n${order.customerPhone}\n${order.customerEmail || "-"}`, contentLeft, { width: 280 });
+    doc.fontSize(9).text(`${driver.address}\n${driver.city}, ${driver.country}\n${safeStr(order?.customerPhone)}\n${safeStr(order?.customerEmail)}`, contentLeft, { width: 280 });
     const billToBottom = doc.y;
 
     doc.y = 50 + 28 + 12;
     doc.fontSize(9).fillColor(INK);
-    doc.text(`Invoice # ${order.orderNumber}`, contentRight, doc.y, { width: 180, align: "right" });
+    doc.text(`Invoice # ${safeStr(order?.orderNumber)}`, contentRight, doc.y, { width: 180, align: "right" });
     doc.y += 14;
-    doc.text(`Date: ${formatDate(order.createdAt)}`, contentRight, doc.y, { width: 180, align: "right" });
+    doc.text(`Date: ${formatDate(safeStr(order?.createdAt))}`, contentRight, doc.y, { width: 180, align: "right" });
     doc.y += 14;
     doc.fillColor(EMERALD).text("Status: Paid", contentRight, doc.y, { width: 180, align: "right" });
 
@@ -118,11 +134,13 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
 
     // Table rows
     doc.fontSize(10).fillColor(INK).font("Helvetica");
-    for (const item of order.items) {
-      const lineTotal = (item.price * item.quantity).toFixed(3);
-      doc.text(item.productName, col1 + 8, doc.y, { width: 245 });
-      doc.text((item.price).toFixed(3) + " KWD", col2, doc.y);
-      doc.text(String(item.quantity), col3, doc.y);
+    for (const item of items) {
+      const price = safeNum(item?.price, 0);
+      const qty = Math.max(1, Math.floor(safeNum(item?.quantity, 1)));
+      const lineTotal = (price * qty).toFixed(3);
+      doc.text(safeStr(item?.productName), col1 + 8, doc.y, { width: 245 });
+      doc.text(price.toFixed(3) + " KWD", col2, doc.y);
+      doc.text(String(qty), col3, doc.y);
       doc.text(lineTotal + " KWD", col4, doc.y);
       doc.y += 18;
     }
@@ -132,23 +150,23 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     const sumLeft = contentRight - 200;
     doc.fontSize(10).fillColor(INK);
     doc.text("Subtotal", sumLeft, doc.y);
-    doc.text((order.total - order.shippingCost).toFixed(3) + " KWD", contentRight, doc.y);
+    doc.text(subtotal.toFixed(3) + " KWD", contentRight, doc.y);
     doc.y += 14;
     doc.text("Delivery", sumLeft, doc.y);
-    doc.text(order.shippingCost.toFixed(3) + " KWD", contentRight, doc.y);
+    doc.text(shippingCost.toFixed(3) + " KWD", contentRight, doc.y);
     doc.y += 14;
     doc.moveTo(sumLeft, doc.y).lineTo(contentRight, doc.y).strokeColor("#E7E1D4").stroke();
     doc.y += 10;
     doc.fontSize(12).fillColor(EMERALD).font("Helvetica-Bold");
     doc.text("Total", sumLeft, doc.y);
-    doc.text(order.total.toFixed(3) + " KWD", contentRight, doc.y);
+    doc.text(total.toFixed(3) + " KWD", contentRight, doc.y);
     doc.y += 28;
 
     // PAYMENT DETAILS - left-aligned, full width for readability
     doc.fontSize(9).fillColor(MUTED).font("Helvetica-Bold").text("PAYMENT DETAILS", contentLeft);
     doc.y += 6;
-    const pm = paymentMethodLabel((order as { paymentMethod?: string }).paymentMethod);
-    const pid = String((order as { paymentId?: string }).paymentId || "-");
+    const pm = paymentMethodLabel((order as { paymentMethod?: string })?.paymentMethod);
+    const pid = safeStr((order as { paymentId?: string })?.paymentId);
     doc.fontSize(10).fillColor(INK).font("Helvetica");
     doc.text(`Method: ${pm}`, contentLeft, doc.y, { width: contentWidth });
     doc.y += 14;
@@ -195,28 +213,31 @@ async function getBrowser() {
   return browser;
 }
 
-export async function generateInvoicePdf(order: OrderWithItems, settings?: Settings | null): Promise<Buffer> {
-  try {
-    const html = getInvoiceHtml(order, settings);
-    const b = await getBrowser();
-    const page = await b.newPage();
+const USE_PUPPETEER = process.env.DISABLE_PUPPETEER !== "1" && !process.env.RENDER;
 
+export async function generateInvoicePdf(order: OrderWithItems, settings?: Settings | null): Promise<Buffer> {
+  if (USE_PUPPETEER) {
     try {
-      await page.setContent(html, {
-        waitUntil: ["networkidle0", "load"],
-        timeout: 15000,
-      });
-      const pdf = await page.pdf({
-        format: "A4",
-        printBackground: true,
-        margin: { top: 0, right: 0, bottom: 0, left: 0 },
-      });
-      return Buffer.from(pdf);
-    } finally {
-      await page.close();
+      const html = getInvoiceHtml(order, settings);
+      const b = await getBrowser();
+      const page = await b.newPage();
+      try {
+        await page.setContent(html, {
+          waitUntil: ["networkidle0", "load"],
+          timeout: 15000,
+        });
+        const pdf = await page.pdf({
+          format: "A4",
+          printBackground: true,
+          margin: { top: 0, right: 0, bottom: 0, left: 0 },
+        });
+        return Buffer.from(pdf);
+      } finally {
+        await page.close();
+      }
+    } catch (puppeteerErr) {
+      console.warn("Puppeteer invoice failed, using PDFKit:", puppeteerErr instanceof Error ? puppeteerErr.message : String(puppeteerErr));
     }
-  } catch (puppeteerErr) {
-    console.warn("Puppeteer invoice failed, using PDFKit fallback:", puppeteerErr instanceof Error ? puppeteerErr.message : String(puppeteerErr));
-    return generatePdfWithPdfKit(order, settings);
   }
+  return generatePdfWithPdfKit(order, settings);
 }

@@ -150,12 +150,14 @@
   }
   body[lang="ar"] {
     @apply font-arabic;
-    letter-spacing: 0;
-    word-spacing: normal;
+    letter-spacing: 0 !important;
+    word-spacing: normal !important;
   }
-  body[lang="ar"] * {
-    letter-spacing: 0;
-    word-spacing: normal;
+  body[lang="ar"] *,
+  body[lang="ar"] *::before,
+  body[lang="ar"] *::after {
+    letter-spacing: 0 !important;
+    word-spacing: normal !important;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif font-medium tracking-tight;
@@ -166,7 +168,8 @@
   body[lang="ar"] h4, 
   body[lang="ar"] h5, 
   body[lang="ar"] h6 {
-    @apply font-arabic tracking-normal;
+    @apply font-arabic;
+    letter-spacing: 0 !important;
   }
 }
 
