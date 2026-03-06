@@ -69,6 +69,21 @@ function getLogoPath(): string | null {
   return null;
 }
 
+function getArabicFontPath(): string | null {
+  const candidates = [
+    path.join(process.cwd(), "assets", "fonts", "NotoNaskhArabic-Regular.ttf"),
+    path.join(process.cwd(), "client", "public", "fonts", "NotoNaskhArabic-Regular.ttf"),
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf",
+    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
 /** PDFKit fallback when Puppeteer/Chromium unavailable (e.g. Render) */
 function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -127,7 +142,18 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     // BILL TO (left) | Order # + Date + Status (right)
     doc.fontSize(9).fillColor(MUTED).font("Helvetica-Bold").text("BILL TO", contentLeft);
     doc.y += 6;
-    doc.fontSize(10).fillColor(INK).font("Helvetica").text(driver.name, contentLeft, doc.y, { width: 280 });
+    const arabicFontPath = getArabicFontPath();
+    const hasArabicName = hasArabic(driver.name);
+    if (hasArabicName && arabicFontPath) {
+      doc.font(arabicFontPath);
+    } else {
+      doc.font("Helvetica");
+    }
+    doc.fontSize(10).fillColor(INK).text(driver.name, contentLeft, doc.y, {
+      width: 280,
+      align: hasArabicName ? "right" : "left",
+    });
+    if (hasArabicName && arabicFontPath) doc.font("Helvetica");
     doc.y += 14;
     const addressLine = driver.address !== "—" ? driver.address : "";
     const cityCountry = [driver.city, driver.country].filter(Boolean).join(", ");
@@ -199,18 +225,21 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     const sumLabelX = priceX;
     const sumLabelW = qtyX - colGap - sumLabelX;
     doc.fontSize(10).fillColor(INK).font("Helvetica");
-    doc.text("Subtotal", sumLabelX, doc.y, { width: sumLabelW, align: "left" });
-    doc.text(subtotal.toFixed(3) + " KWD", totalX, doc.y, { width: totalW, align: "right" });
-    doc.y += 16;
-    doc.text("Delivery", sumLabelX, doc.y, { width: sumLabelW, align: "left" });
-    doc.text(shippingCost.toFixed(3) + " KWD", totalX, doc.y, { width: totalW, align: "right" });
-    doc.y += 16;
+    let summaryY = doc.y;
+    doc.text("Subtotal", sumLabelX, summaryY, { width: sumLabelW, align: "right", lineBreak: false });
+    doc.text(subtotal.toFixed(3) + " KWD", totalX, summaryY, { width: totalW, align: "right", lineBreak: false });
+    summaryY += 18;
+    doc.text("Delivery", sumLabelX, summaryY, { width: sumLabelW, align: "right", lineBreak: false });
+    doc.text(shippingCost.toFixed(3) + " KWD", totalX, summaryY, { width: totalW, align: "right", lineBreak: false });
+    summaryY += 18;
+    doc.y = summaryY;
     doc.moveTo(sumLabelX, doc.y).lineTo(tableRight, doc.y).strokeColor("#E7E1D4").stroke();
     doc.y += 12;
     doc.fontSize(12).fillColor(EMERALD).font("Helvetica-Bold");
-    doc.text("Total", sumLabelX, doc.y, { width: sumLabelW, align: "left" });
-    doc.text(total.toFixed(3) + " KWD", totalX, doc.y, { width: totalW, align: "right" });
-    doc.y += 28;
+    const totalRowY = doc.y;
+    doc.text("Total", sumLabelX, totalRowY, { width: sumLabelW, align: "right", lineBreak: false });
+    doc.text(total.toFixed(3) + " KWD", totalX, totalRowY, { width: totalW, align: "right", lineBreak: false });
+    doc.y = totalRowY + 28;
 
     // PAYMENT DETAILS - left-aligned, full width for readability
     doc.fontSize(9).fillColor(MUTED).font("Helvetica-Bold").text("PAYMENT DETAILS", contentLeft);
