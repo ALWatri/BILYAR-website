@@ -35,12 +35,16 @@ function getDriverEnglish(order: OrderWithItems) {
 function normalizeDisplayName(name: string): string {
   const cleaned = (name || "").trim();
   if (!cleaned || !hasArabic(cleaned)) return cleaned;
-  const parts = cleaned.split(/\s+/).filter(Boolean);
-  // If the family name (usually starts with "ال") appears first, swap two-part names.
-  if (parts.length === 2 && parts[0].startsWith("ال") && !parts[1].startsWith("ال")) {
-    return `${parts[1]} ${parts[0]}`;
-  }
-  return cleaned;
+  return cleaned.replace(/\s+/g, " ");
+}
+
+function toPdfArabicDisplay(name: string): string {
+  const cleaned = (name || "").trim().replace(/\s+/g, " ");
+  if (!cleaned || !hasArabic(cleaned)) return cleaned;
+  // PDFKit text flow is LTR in this layout; reverse Arabic words so the visual
+  // output reads in the intended first-name/last-name order.
+  const words = cleaned.split(" ").filter(Boolean);
+  return words.reverse().join("   ");
 }
 
 function formatDate(dateStr: string): string {
@@ -135,7 +139,7 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
       .lineWidth(1).stroke(EMERALD);
 
     doc.x = contentLeft;
-    const topStartY = margin + border + 5;
+    const topStartY = margin + border + 1;
     doc.y = topStartY;
 
     const logoPath = getLogoPath();
@@ -156,12 +160,13 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     doc.y += 6;
     const arabicFontPath = getArabicFontPath();
     const hasArabicName = hasArabic(driver.name);
+    const displayName = hasArabicName ? toPdfArabicDisplay(driver.name) : driver.name;
     if (hasArabicName && arabicFontPath) {
       doc.font(arabicFontPath);
     } else {
       doc.font("Helvetica");
     }
-    doc.fontSize(10).fillColor(INK).text(driver.name, contentLeft, doc.y, { width: 280, align: "left" });
+    doc.fontSize(10).fillColor(INK).text(displayName, contentLeft, doc.y, { width: 280, align: "left" });
     if (hasArabicName && arabicFontPath) doc.font("Helvetica");
     doc.y += 14;
     const addressLine = driver.address !== "—" ? driver.address : "";
