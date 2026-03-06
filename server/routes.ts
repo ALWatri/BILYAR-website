@@ -589,26 +589,12 @@ export async function registerRoutes(
           status: "Pending",
           paymentMethod: data.paymentMethod ?? "tap",
           paymentStatus: isManual ? "manual" : "pending",
+          inventoryAdjusted: false,
           total,
           shippingCost,
         },
         itemsWithNotesEn
       );
-
-      // Reduce inventory for products with stockBySize (ordered by available size, not custom)
-      for (const item of data.items) {
-        const p = productsById.get(item.productId);
-        if (!p || !item.size) continue;
-        const stock = (p as { stockBySize?: Record<string, number> | null }).stockBySize;
-        if (!stock || typeof stock !== "object") continue;
-        if (!Object.prototype.hasOwnProperty.call(stock, item.size)) continue;
-        const current = Number(stock[item.size]) ?? 0;
-        if (current <= 0) continue;
-        const next = Math.max(0, current - item.quantity);
-        await storage.updateProduct(item.productId, {
-          stockBySize: { ...stock, [item.size]: next },
-        });
-      }
 
       res.status(201).json(order);
     } catch (error) {
@@ -618,6 +604,25 @@ export async function registerRoutes(
       throw error;
     }
   });
+
+  async function adjustInventoryForOrder(orderId: number, direction: 1 | -1) {
+    const order = await storage.getOrder(orderId);
+    if (!order) return;
+    for (const item of order.items || []) {
+      const size = (item.size || "").trim();
+      if (!size) continue; // custom orders don't touch stockBySize
+      const product = await storage.getProduct(item.productId);
+      if (!product) continue;
+      const stock = (product as any).stockBySize as Record<string, number> | null | undefined;
+      if (!stock || typeof stock !== "object") continue;
+      if (!Object.prototype.hasOwnProperty.call(stock, size)) continue;
+      const current = Number((stock as any)[size]) ?? 0;
+      const delta = direction * (item.quantity ?? 1);
+      const next = Math.max(0, current + delta);
+      if (next === current) continue;
+      await storage.updateProduct(item.productId, { stockBySize: { ...stock, [size]: next } });
+    }
+  }
 
   app.delete("/api/orders/:id", async (req, res) => {
     const id = parseInt(req.params.id);
@@ -633,6 +638,14 @@ export async function registerRoutes(
     const { status } = req.body;
     if (!["Pending", "Paid", "Processing", "Shipped", "Delivered", "Unfinished", "Cancelled"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
+    }
+    // If a paid order gets cancelled, restore inventory.
+    if (status === "Cancelled") {
+      const existing = await storage.getOrder(id);
+      if (existing && (existing as any).inventoryAdjusted) {
+        await adjustInventoryForOrder(id, +1);
+        await storage.updateOrder(id, { inventoryAdjusted: false } as any);
+      }
     }
     const updated = await storage.updateOrderStatus(id, status);
     if (!updated) return res.status(404).json({ message: "Order not found" });
@@ -1125,8 +1138,13 @@ export async function registerRoutes(
         const charge = await parseJsonOrThrow(chargeRes, "Tap Get Charge");
 
         if (charge?.status === "CAPTURED") {
+          const existing = await storage.getOrder(id);
           await storage.updateOrderPayment(id, String(tap_id), "paid");
           await storage.updateOrderStatus(id, "Paid");
+          if (existing && !(existing as any).inventoryAdjusted) {
+            await adjustInventoryForOrder(id, -1);
+            await storage.updateOrder(id, { inventoryAdjusted: true } as any);
+          }
           sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
           return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
         }
@@ -1157,6 +1175,10 @@ export async function registerRoutes(
         if (order && order.paymentStatus !== "paid") {
           await storage.updateOrderPayment(orderId, chargeId, "paid");
           await storage.updateOrderStatus(orderId, "Paid");
+          if (!(order as any).inventoryAdjusted) {
+            await adjustInventoryForOrder(orderId, -1);
+            await storage.updateOrder(orderId, { inventoryAdjusted: true } as any);
+          }
         }
       } catch (e) {
         console.error("Tap webhook error:", e);
@@ -1250,8 +1272,13 @@ export async function registerRoutes(
       await storage.updateOrderStatus(id, "Cancelled");
       return res.redirect(`${baseUrl}/order/failed?orderId=${orderId}`);
     }
+    const existing = await storage.getOrder(id);
     await storage.updateOrderPayment(id, "", "paid");
     await storage.updateOrderStatus(id, "Paid");
+    if (existing && !(existing as any).inventoryAdjusted) {
+      await adjustInventoryForOrder(id, -1);
+      await storage.updateOrder(id, { inventoryAdjusted: true } as any);
+    }
     sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
     return res.redirect(`${baseUrl}/order/success?orderId=${orderId}`);
   });
@@ -1280,6 +1307,10 @@ export async function registerRoutes(
         if (status.toLowerCase() === "captured") {
           await storage.updateOrderPayment(order.id, orderRef || "", "paid");
           await storage.updateOrderStatus(order.id, "Paid");
+          if (!(order as any).inventoryAdjusted) {
+            await adjustInventoryForOrder(order.id, -1);
+            await storage.updateOrder(order.id, { inventoryAdjusted: true } as any);
+          }
           console.log(`Deema webhook: Order ${order.id} payment captured`);
         } else if (status.toLowerCase() === "expired" || status.toLowerCase() === "cancelled") {
           // Don't overwrite if we already marked as paid (e.g. from callback) so successful payments aren't flipped to failed

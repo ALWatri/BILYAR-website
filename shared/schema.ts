@@ -60,6 +60,7 @@ export const orders = pgTable("orders", {
   paymentMethod: text("payment_method").default("tap"),
   paymentId: text("payment_id"),
   paymentStatus: text("payment_status").default("pending"),
+  inventoryAdjusted: boolean("inventory_adjusted").notNull().default(false),
   total: real("total").notNull(),
   shippingCost: real("shipping_cost").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`to_char(now(), 'YYYY-MM-DD')`),
