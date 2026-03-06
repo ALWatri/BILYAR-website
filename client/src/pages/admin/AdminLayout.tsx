@@ -1,9 +1,10 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, ShoppingBag, Package, Settings, LogOut, Globe, Users, Tags, Layers, MessageCircle } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, Package, Settings, LogOut, Globe, Users, Tags, Layers, MessageCircle, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { translations } from "@/lib/translations";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -12,6 +13,7 @@ interface AdminLayoutProps {
 export function AdminLayout({ children }: AdminLayoutProps) {
   const [location, setLocation] = useLocation();
   const [lang, setLang] = useState<"en" | "ar">("en");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const checkLang = () => {
@@ -90,17 +92,54 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </aside>
 
-      {/* Mobile Header (visible on small screens) */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-10 flex items-center justify-between px-4">
-         <h1 className="text-xl font-serif font-bold text-primary">BILYAR. Admin</h1>
-         <div className="flex items-center gap-2">
-           <Button onClick={toggleLang} variant="ghost" size="icon" className="h-8 w-8">
-             <Globe className="h-4 w-4" />
-           </Button>
-           <button onClick={handleLogout}>
-              <LogOut className="h-5 w-5 text-gray-600" />
-           </button>
-         </div>
+      {/* Mobile Header + Menu (visible on small screens) */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-20 flex items-center justify-between px-4">
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="Open menu">
+              <Menu className="h-6 w-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side={isRtl ? "right" : "left"} className="w-64 p-0 pt-12">
+            <div className="flex flex-col h-full pt-16">
+              <nav className="flex-1 p-4 space-y-1 overflow-auto">
+                {navItems.map((item) => (
+                  <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)}>
+                    <div
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-md transition-colors cursor-pointer",
+                        location === item.href
+                          ? "bg-primary/5 text-primary"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      )}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {item.label}
+                    </div>
+                  </Link>
+                ))}
+              </nav>
+              <div className="p-4 border-t border-gray-200">
+                <button
+                  onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 rounded-md hover:bg-red-50 w-full transition-colors"
+                >
+                  <LogOut className={cn("h-5 w-5", isRtl && "rotate-180")} />
+                  {t.sign_out}
+                </button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+        <h1 className="text-xl font-serif font-bold text-primary">BILYAR. Admin</h1>
+        <div className="flex items-center gap-2">
+          <Button onClick={toggleLang} variant="ghost" size="icon" className="h-8 w-8">
+            <Globe className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleLogout}>
+            <LogOut className="h-5 w-5 text-gray-600" />
+          </Button>
+        </div>
       </div>
 
       {/* Main Content */}

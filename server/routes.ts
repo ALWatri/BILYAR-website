@@ -635,6 +635,26 @@ export async function registerRoutes(
     return email ? email : `${phone}|${name}`;
   }
 
+  function normalizePhone(phone: string): string {
+    return phone.replace(/\D/g, "").slice(-8);
+  }
+
+  app.get("/api/customers/by-phone", async (req, res) => {
+    const phone = (req.query.phone || "").toString().trim();
+    const digits = normalizePhone(phone);
+    if (digits.length < 8) return res.status(400).json({ message: "Phone number required (8 digits)" });
+    const orders = await storage.getOrders();
+    const match = orders.find((o) => normalizePhone(o.customerPhone) === digits);
+    if (!match) return res.status(404).json({ message: "Customer not found" });
+    res.json({
+      name: match.customerName,
+      email: match.customerEmail || "",
+      address: match.customerAddress,
+      city: match.customerCity,
+      country: match.customerCountry || "Kuwait",
+    });
+  });
+
   app.get("/api/customers", async (_req, res) => {
     const orders = await storage.getOrders();
     const customerMap = new Map<string, {
