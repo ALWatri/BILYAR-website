@@ -198,13 +198,104 @@ export default function Orders() {
     return method || "—";
   };
 
-  /** Show English translation for drivers when available, else original */
-  const forDriver = (order: OrderWithItems) => ({
-    name: (order as OrderWithItems & { customerNameEn?: string | null }).customerNameEn ?? order.customerName,
-    address: (order as OrderWithItems & { customerAddressEn?: string | null }).customerAddressEn ?? order.customerAddress,
-    city: (order as OrderWithItems & { customerCityEn?: string | null }).customerCityEn ?? order.customerCity,
-    country: (order as OrderWithItems & { customerCountryEn?: string | null }).customerCountryEn ?? order.customerCountry,
-  });
+  const arDigitsToLatin = (s: string) =>
+    s
+      .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)))
+      .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)));
+
+  const normalizeSpace = (s: string) => s.replace(/\s+/g, " ").trim();
+
+  const isMostlyArabic = (s: string) => /[\u0600-\u06FF]/.test(s);
+
+  const KUWAIT_AREA_AR_TO_EN: Record<string, string> = {
+    "العارضية": "Ardiya",
+    "العارضية الصناعية": "Industrial Ardiya",
+    "حولي": "Hawalli",
+    "السالمية": "Salmiya",
+    "الفروانية": "Farwaniya",
+    "الجهراء": "Jahra",
+    "خيطان": "Khaitan",
+    "الفحيحيل": "Fahaheel",
+    "المهبولة": "Mahboula",
+    "المنقف": "Mangaf",
+    "عبد الله السالم": "Abdullah Al-Salem",
+    "الشامية": "Shamiya",
+    "الروضة": "Rawda",
+    "القادسية": "Qadsiya",
+    "الرميثية": "Rumaithiya",
+    "الجابرية": "Jabriya",
+    "الدعية": "Daiya",
+    "الدسمة": "Dasma",
+    "الدوحة": "Doha",
+    "كيفان": "Kaifan",
+    "الخالدية": "Khaldiya",
+    "المنصورية": "Mansouriya",
+    "النزهة": "Nuzha",
+    "المطلاع": "Al-Mutlaa",
+    "صباح الأحمد": "Sabah Al Ahmad",
+    "جنوب صباح الأحمد": "South Sabah Al Ahmad",
+    "الخيران": "Khiran",
+    "أم الهيمان": "Umm Al Hayman",
+  };
+
+  function kuwaitAddressToEnglish(addressRaw: string): string {
+    const a0 = normalizeSpace(arDigitsToLatin(addressRaw));
+    if (!a0) return a0;
+
+    // Replace common address tokens
+    let a = a0
+      .replace(/\bقطعة\b/g, "Block")
+      .replace(/\bقطعه\b/g, "Block")
+      .replace(/\bشارع\b/g, "Street")
+      .replace(/\bجادة\b/g, "Avenue")
+      .replace(/\bمنزل\b/g, "House")
+      .replace(/\bبيت\b/g, "House")
+      .replace(/\bعمارة\b/g, "Building")
+      .replace(/\bشقة\b/g, "Apt");
+
+    // Area at the beginning: "العارضية ..." => "Ardiya ..."
+    for (const [ar, en] of Object.entries(KUWAIT_AREA_AR_TO_EN)) {
+      if (a.startsWith(ar + " ") || a === ar) {
+        a = en + a.slice(ar.length);
+        break;
+      }
+    }
+
+    // Cleanup punctuation and spacing
+    a = a
+      .replace(/[،]/g, ",")
+      .replace(/\s*,\s*/g, ", ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    return a;
+  }
+
+  /** Show driver-friendly English when possible */
+  const forDriver = (order: OrderWithItems) => {
+    const name = (order as OrderWithItems & { customerNameEn?: string | null }).customerNameEn ?? order.customerName;
+    const addressEn = (order as OrderWithItems & { customerAddressEn?: string | null }).customerAddressEn ?? "";
+    const cityEn = (order as OrderWithItems & { customerCityEn?: string | null }).customerCityEn ?? "";
+    const countryEn = (order as OrderWithItems & { customerCountryEn?: string | null }).customerCountryEn ?? "";
+
+    const addressRaw = addressEn.trim() ? addressEn : order.customerAddress;
+    const cityRaw = cityEn.trim() ? cityEn : order.customerCity;
+    const countryRaw = countryEn.trim() ? countryEn : order.customerCountry;
+
+    return {
+      name,
+      address: isMostlyArabic(addressRaw) ? kuwaitAddressToEnglish(addressRaw) : normalizeSpace(addressRaw),
+      city: isMostlyArabic(cityRaw) ? (KUWAIT_AREA_AR_TO_EN[normalizeSpace(cityRaw)] ?? "Kuwait") : normalizeSpace(cityRaw || "Kuwait"),
+      country: isMostlyArabic(countryRaw) ? "Kuwait" : normalizeSpace(countryRaw || "Kuwait"),
+    };
+  };
+
+  const toAbsoluteUrl = (src: string) => {
+    if (!src) return src;
+    if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:")) return src;
+    const s = src.startsWith("/") ? src : `/${src}`;
+    return `${window.location.origin}${s}`;
+  };
   const itemNotesForDriver = (item: OrderWithItems["items"][0]) =>
     (item as { notesEn?: string | null }).notesEn ?? item.notes;
 
@@ -221,39 +312,90 @@ export default function Orders() {
     ).join("");
     win.document.write(`
       <!DOCTYPE html><html><head><title>Delivery Slip ${order.orderNumber}</title>
-      <style>body{font-family:sans-serif;padding:24px;max-width:500px;margin:0 auto}
+      <style>
+      @page{margin:16mm}
+      body{font-family:sans-serif;padding:24px;max-width:500px;margin:0 auto}
       table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:left}
-      h1{font-size:1.25rem;margin-bottom:8px}.meta{color:#666;margin-bottom:16px}</style></head><body>
+      h1{font-size:1.25rem;margin-bottom:8px}.meta{color:#666;margin-bottom:16px}
+      </style></head><body>
       <h1>DELIVERY SLIP - ${order.orderNumber}</h1>
       <div class="meta">${order.createdAt}</div>
       <p><strong>Customer:</strong> ${forDriver(order).name}<br><strong>Phone:</strong> ${order.customerPhone}</p>
       <p><strong>Address:</strong><br>${forDriver(order).address}<br>${forDriver(order).city}, ${forDriver(order).country}</p>
-      <h3>Items (no images, no prices)</h3>
+      <h3>Items</h3>
       <table><thead><tr><th>Product</th><th>Qty</th><th>Size</th></tr></thead><tbody>${itemsHtml}</tbody></table>
       </body></html>
     `);
     win.document.close();
     win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 250);
+    // Replace URL so print footer doesn't expose /admin
+    try { win.history.replaceState({}, "", "/"); } catch {}
+    setTimeout(() => { win.print(); win.close(); }, 600);
   };
 
   const printTailorSlip = (order: OrderWithItems) => {
     const win = window.open("", "_blank");
     if (!win) return;
+
+    const labelForKey: Record<string, string> = {
+      dressLength: "Length",
+      dressShoulder: "Shoulder",
+      dressHip: "Hip",
+      dressChest: "Chest",
+      dressSleeve: "Sleeve",
+      shirtLength: "Length",
+      shirtShoulder: "Shoulder",
+      shirtSleeve: "Sleeve",
+      shirtArmhole: "Armhole",
+      shirtChest: "Chest",
+      trouserWaist: "Waist",
+      trouserHip: "Hip",
+      trouserThigh: "Thigh",
+      trouserKnee: "Knee",
+      trouserLeg: "Leg opening",
+      trouserLength: "Length",
+    };
+
+    function measurementTable(title: string, entries: [string, string][]) {
+      if (!entries.length) return "";
+      const rows = entries
+        .map(([k, v]) => `<tr><td>${labelForKey[k] ?? k}</td><td>${String(v)}</td></tr>`)
+        .join("");
+      return `
+        <div class="meas-block">
+          <div class="meas-title">${title}</div>
+          <table class="meas">
+            <thead><tr><th>Measurement</th><th>Value (inch)</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
     const itemsHtml = order.items.map((i) => {
-      const measurements = i.measurements && typeof i.measurements === "object" ? Object.entries(i.measurements as Record<string, string>).map(([k, v]) => `<tr><td>${k}</td><td>${String(v)}</td></tr>`).join("") : "";
-      const measurementsTable = measurements ? `<table class="meas"><thead><tr><th>Measurement</th><th>Value (inch)</th></tr></thead><tbody>${measurements}</tbody></table>` : "";
+      const all = i.measurements && typeof i.measurements === "object" ? Object.entries(i.measurements as Record<string, string>) : [];
+      const top = all.filter(([k]) => k.startsWith("shirt") || k.startsWith("dress"));
+      const bottom = all.filter(([k]) => k.startsWith("trouser"));
+
+      const isSet = top.length > 0 && bottom.length > 0;
+      const tables = [
+        ...(isSet ? [measurementTable("Top measurements", top), measurementTable("Bottom measurements", bottom)] : []),
+        ...(!isSet && top.length > 0 ? [measurementTable(top.some(([k]) => k.startsWith("dress")) ? "Dress measurements" : "Top measurements", top)] : []),
+        ...(!isSet && bottom.length > 0 ? [measurementTable("Bottom measurements", bottom)] : []),
+      ].join("");
+
       const notesEn = (i as { notesEn?: string | null }).notesEn || i.notes || "";
       const notesBlock = notesEn ? `<p class="notes"><strong>Notes:</strong> ${notesEn}</p>` : "";
+      const img = toAbsoluteUrl(i.image);
       return `
         <div class="piece">
           <div class="piece-row">
-            <img src="${i.image}" alt="${i.productName}" />
+            <img src="${img}" alt="${i.productName}" />
             <div class="piece-info">
               <p class="piece-name">${i.productName}</p>
               <p><strong>Qty:</strong> ${i.quantity} | <strong>Size:</strong> ${i.size || "—"}</p>
               ${notesBlock}
-              ${measurementsTable}
+              ${tables}
             </div>
           </div>
         </div>
@@ -262,6 +404,7 @@ export default function Orders() {
     win.document.write(`
       <!DOCTYPE html><html><head><title>Tailor Slip ${order.orderNumber}</title>
       <style>
+        @page{margin:16mm}
         body{font-family:sans-serif;padding:24px;max-width:600px;margin:0 auto}
         h1{font-size:1.25rem;margin-bottom:8px}
         .meta{color:#666;margin-bottom:16px}
@@ -270,6 +413,8 @@ export default function Orders() {
         .piece img{width:100px;height:120px;object-fit:cover;flex-shrink:0}
         .piece-info{flex:1}
         .piece-name{font-weight:bold;margin:0 0 8px 0}
+        .meas-block{margin-top:12px}
+        .meas-title{font-weight:700;font-size:12px;margin:0 0 6px 0;color:#333}
         .meas{width:100%;border-collapse:collapse;margin-top:12px}
         .meas th,.meas td{border:1px solid #ddd;padding:6px 8px;text-align:left}
         .meas th{background:#f5f5f5}
@@ -282,7 +427,21 @@ export default function Orders() {
     `);
     win.document.close();
     win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 250);
+    // Replace URL so print footer doesn't expose /admin
+    try { win.history.replaceState({}, "", "/"); } catch {}
+
+    const started = Date.now();
+    const tick = () => {
+      const imgs = Array.from(win.document.images || []);
+      const allLoaded = imgs.every((img) => (img as HTMLImageElement).complete);
+      if (allLoaded || Date.now() - started > 2000) {
+        win.print();
+        win.close();
+        return;
+      }
+      setTimeout(tick, 150);
+    };
+    setTimeout(tick, 150);
   };
 
   const exportReport = () => {
