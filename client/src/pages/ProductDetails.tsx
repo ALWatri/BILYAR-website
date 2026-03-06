@@ -22,6 +22,8 @@ export default function ProductDetails() {
   const [, params] = useRoute("/product/:id");
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [purchaseVariant, setPurchaseVariant] = useState<"set" | "top">("set");
+  const [fitMode, setFitMode] = useState<"ready" | "custom">("custom");
+  const [fitError, setFitError] = useState<string>("");
   const [lang, setLang] = useState<"en" | "ar">("en");
   const [addedToCart, setAddedToCart] = useState(false);
   const { addItem } = useCart();
@@ -43,6 +45,18 @@ export default function ProductDetails() {
     queryKey: [`/api/products/${params?.id}`],
     enabled: !!params?.id,
   });
+
+  useEffect(() => {
+    if (!product) return;
+    const stockBySize = (product as Product & { stockBySize?: Record<string, number> | null }).stockBySize;
+    const sizesWithStock = stockBySize && typeof stockBySize === "object"
+      ? Object.entries(stockBySize).filter(([, q]) => Number(q) > 0).map(([s]) => s)
+      : [];
+    const hasReadyOption = sizesWithStock.length > 0;
+    setFitMode(hasReadyOption ? "ready" : "custom");
+    setSelectedSize(null);
+    setFitError("");
+  }, [product?.id]);
 
   if (isLoading) {
     return (
@@ -80,6 +94,7 @@ export default function ProductDetails() {
   const showTrouser = product.hasTrouser && (purchaseVariant === "set" || !topSoldSeparately);
   const showShirt = product.hasShirt;
   const displayPrice = purchaseVariant === "top" && topPrice != null ? topPrice : product.price;
+  const hasCustomOption = hasDress || showShirt || showTrouser;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -139,32 +154,72 @@ export default function ProductDetails() {
                 {description}
               </p>
 
-              {showSizes && (
-              <div>
-                <div className="flex justify-between mb-4">
-                  <span className="text-sm font-medium uppercase tracking-wide">{t.size}</span>
-                  <button className="text-sm text-muted-foreground underline">{t.guide}</button>
-                </div>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {sizesWithStock.map((size) => (
+              {showSizes && hasCustomOption && (
+                <div className="space-y-3">
+                  <p className={cn("text-sm font-medium", isRtl ? "text-right" : "text-left")}>
+                    {isRtl ? "اختاري طريقة الشراء" : "Choose purchase option"}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
                     <button
-                      key={size}
                       type="button"
-                      onClick={() => setSelectedSize(size)}
-                      data-testid={`button-size-${size}`}
-                      className={`h-12 border transition-all ${
-                        selectedSize === size 
-                          ? "border-primary bg-primary text-primary-foreground" 
-                          : "border-input hover:border-primary"
-                      }`}
+                      onClick={() => {
+                        setFitMode("ready");
+                        setFitError("");
+                      }}
+                      className={cn(
+                        "h-12 border transition-all text-sm font-medium",
+                        fitMode === "ready" ? "border-primary bg-primary text-primary-foreground" : "border-input hover:border-primary"
+                      )}
+                      data-testid="button-fit-ready"
                     >
-                      {size}
+                      {isRtl ? "مقاس جاهز" : "Ready size"}
                     </button>
-                  ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFitMode("custom");
+                        setSelectedSize(null);
+                        setFitError("");
+                      }}
+                      className={cn(
+                        "h-12 border transition-all text-sm font-medium",
+                        fitMode === "custom" ? "border-primary bg-primary text-primary-foreground" : "border-input hover:border-primary"
+                      )}
+                      data-testid="button-fit-custom"
+                    >
+                      {isRtl ? "تفصيل حسب القياس" : "Custom measurements"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
+              {showSizes && fitMode === "ready" && (
+                <div>
+                  <div className="flex justify-between mb-4">
+                    <span className="text-sm font-medium uppercase tracking-wide">{t.size}</span>
+                    <button className="text-sm text-muted-foreground underline">{t.guide}</button>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {sizesWithStock.map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => { setSelectedSize(size); setFitError(""); }}
+                        data-testid={`button-size-${size}`}
+                        className={`h-12 border transition-all ${
+                          selectedSize === size 
+                            ? "border-primary bg-primary text-primary-foreground" 
+                            : "border-input hover:border-primary"
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {hasCustomOption && (!showSizes || fitMode === "custom") && (
               <div className="space-y-6 pt-6 border-t border-border">
                 <h3 className={cn("text-sm font-bold uppercase tracking-widest", isRtl ? "text-right" : "text-left")}>
                   {t.custom_measurements}
@@ -264,16 +319,24 @@ export default function ProductDetails() {
                   </div>
                 )}
 
-                <div className="space-y-2 pt-4">
-                  <Label className="text-xs font-bold uppercase tracking-widest block">{t.notes}</Label>
-                  <textarea 
-                    ref={notesRef}
-                    className="w-full p-3 bg-secondary/20 border border-transparent focus:border-primary outline-none h-24 text-sm rounded-none" 
-                    placeholder={t.notes_placeholder}
-                    data-testid="input-notes"
-                  />
-                </div>
               </div>
+              )}
+
+              <div className="space-y-2 pt-4 border-t border-border">
+                <Label className="text-xs font-bold uppercase tracking-widest block">{t.notes}</Label>
+                <textarea 
+                  ref={notesRef}
+                  className="w-full p-3 bg-secondary/20 border border-transparent focus:border-primary outline-none h-24 text-sm rounded-none" 
+                  placeholder={t.notes_placeholder}
+                  data-testid="input-notes"
+                />
+              </div>
+
+              {fitError && (
+                <div className={cn("p-4 border text-sm", "bg-destructive/10 text-destructive border-destructive/20")} data-testid="text-fit-error">
+                  {fitError}
+                </div>
+              )}
 
               {outOfStock ? (
               <div className="w-full h-14 flex items-center justify-center border border-border bg-muted/30 text-muted-foreground uppercase tracking-widest text-sm">
@@ -286,21 +349,59 @@ export default function ProductDetails() {
                   "w-full h-14 text-lg uppercase tracking-widest rounded-none transition-all",
                   addedToCart && "bg-green-700 hover:bg-green-700"
                 )}
-                disabled={showSizes && !selectedSize}
+                disabled={(showSizes && (!hasCustomOption || fitMode === "ready") && !selectedSize)}
                 onClick={() => {
                   if (!product) return;
-                  if (showSizes && !selectedSize) return;
-                  const measurements: Record<string, string> = {};
-                  Object.entries(measurementRefs.current).forEach(([key, el]) => {
-                    if (el && el.value) measurements[key] = el.value;
-                  });
+                  setFitError("");
+
+                  const wantsReady = showSizes && (!hasCustomOption || fitMode === "ready");
+                  const wantsCustom = hasCustomOption && (!showSizes || fitMode === "custom");
+
+                  if (wantsReady && !selectedSize) {
+                    setFitError(isRtl ? "الرجاء اختيار المقاس." : "Please select a size.");
+                    return;
+                  }
+
+                  let measurements: Record<string, string> | undefined = undefined;
+                  if (wantsCustom) {
+                    const requiredKeys: string[] = [];
+                    if (hasDress) requiredKeys.push("dressLength", "dressShoulder", "dressHip", "dressChest", "dressSleeve");
+                    if (showShirt) requiredKeys.push("shirtLength", "shirtShoulder", "shirtSleeve", "shirtArmhole", "shirtChest");
+                    if (showTrouser) requiredKeys.push("trouserWaist", "trouserHip", "trouserThigh", "trouserKnee", "trouserLeg", "trouserLength");
+
+                    let firstMissing: HTMLInputElement | null = null;
+                    for (const k of requiredKeys) {
+                      const el = measurementRefs.current[k];
+                      const v = el?.value ?? "";
+                      const n = Number(v);
+                      if (!Number.isFinite(n) || n <= 0) {
+                        if (!firstMissing) firstMissing = el ?? null;
+                      }
+                    }
+                    if (firstMissing) {
+                      setFitError(isRtl ? "الرجاء إدخال جميع القياسات المطلوبة." : "Please enter all required measurements.");
+                      firstMissing.focus();
+                      return;
+                    }
+
+                    const m: Record<string, string> = {};
+                    for (const [key, el] of Object.entries(measurementRefs.current)) {
+                      const v = (el?.value ?? "").trim();
+                      const n = Number(v);
+                      if (Number.isFinite(n) && n > 0) m[key] = v;
+                    }
+                    measurements = Object.keys(m).length > 0 ? m : undefined;
+                  }
+
                   const variant = topSoldSeparately ? purchaseVariant : undefined;
                   addItem({
                     product,
                     quantity: 1,
-                    size: showSizes ? (selectedSize ?? "") : t.one_size,
+                    size: wantsReady
+                      ? (selectedSize ?? "")
+                      : (isRtl ? "تفصيل" : "Custom"),
                     variant: variant === "top" ? "top" : undefined,
-                    measurements: Object.keys(measurements).length > 0 ? measurements : undefined,
+                    measurements,
                     notes: notesRef.current?.value || undefined,
                   });
                   setAddedToCart(true);

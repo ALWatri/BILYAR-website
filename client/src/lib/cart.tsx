@@ -23,8 +23,8 @@ export interface CartItem {
 interface CartContextType {
   items: CartItem[];
   addItem: (item: CartItem) => void;
-  removeItem: (productId: number, size?: string) => void;
-  updateQuantity: (productId: number, quantity: number, size?: string) => void;
+  removeItem: (productId: number, size?: string, variant?: "set" | "top") => void;
+  updateQuantity: (productId: number, quantity: number, size?: string, variant?: "set" | "top") => void;
   clearCart: () => void;
   subtotal: number;
   shippingCost: number;

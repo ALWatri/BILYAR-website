@@ -378,12 +378,51 @@ export async function registerRoutes(
       quantity: z.number().min(1),
       price: z.number(),
       image: z.string(),
+      variant: z.enum(["set", "top"]).optional(),
       size: z.string().optional(),
       measurements: z.record(z.string()).optional(),
       notes: z.string().optional(),
     })).min(1),
     paymentMethod: z.enum(["tap", "deema", "manual"]).optional().default("tap"),
   });
+
+  function requiredMeasurementKeysForProduct(
+    p: any,
+    variant: "set" | "top" | undefined,
+  ): string[] {
+    const keys: string[] = [];
+    if (p?.hasDress) {
+      keys.push("dressLength", "dressShoulder", "dressHip", "dressChest", "dressSleeve");
+    }
+    if (p?.hasShirt) {
+      keys.push("shirtLength", "shirtShoulder", "shirtSleeve", "shirtArmhole", "shirtChest");
+    }
+    const includeTrouser = !!p?.hasTrouser && !(p?.topSoldSeparately && variant === "top");
+    if (includeTrouser) {
+      keys.push("trouserWaist", "trouserHip", "trouserThigh", "trouserKnee", "trouserLeg", "trouserLength");
+    }
+    return keys;
+  }
+
+  function hasAnyMeasurementValue(m: unknown): boolean {
+    if (!m || typeof m !== "object") return false;
+    for (const v of Object.values(m as Record<string, unknown>)) {
+      const n = Number(v);
+      if (Number.isFinite(n) && n > 0) return true;
+      if (typeof v === "string" && v.trim() !== "") return true;
+    }
+    return false;
+  }
+
+  function hasValidMeasurements(m: unknown, keys: string[]): boolean {
+    if (!m || typeof m !== "object") return false;
+    const rec = m as Record<string, unknown>;
+    return keys.every((k) => {
+      const v = rec[k];
+      const n = Number(v);
+      return Number.isFinite(n) && n > 0;
+    });
+  }
 
   app.post("/api/orders", async (req, res) => {
     try {
@@ -398,12 +437,67 @@ export async function registerRoutes(
         if ((p as any).outOfStock) {
           return res.status(400).json({ message: `Product is out of stock: ${p.name}` });
         }
+        // Enforce "either ready size OR custom measurements" for customizable products.
+        const stock = (p as any).stockBySize as Record<string, number> | null | undefined;
+        const sizesWithStock = stock && typeof stock === "object"
+          ? Object.entries(stock).filter(([, q]) => Number(q) > 0)
+          : [];
+        const hasReadyOption = sizesWithStock.length > 0;
+        const variant = (item as any).variant as ("set" | "top" | undefined);
+        const requiredKeys = requiredMeasurementKeysForProduct(p, variant);
+        const hasCustomOption = requiredKeys.length > 0;
+
+        const size = (item.size || "").trim();
+        const isReadySelected =
+          hasReadyOption &&
+          size !== "" &&
+          Object.prototype.hasOwnProperty.call(stock as any, size) &&
+          Number((stock as any)[size]) >= item.quantity;
+
+        const anyMeasurements = hasAnyMeasurementValue(item.measurements);
+        const validMeasurements = hasValidMeasurements(item.measurements, requiredKeys);
+
+        if (
+          hasReadyOption &&
+          !anyMeasurements &&
+          size !== "" &&
+          Object.prototype.hasOwnProperty.call(stock as any, size) &&
+          Number((stock as any)[size]) < item.quantity
+        ) {
+          return res.status(400).json({ message: `Selected size is not available for: ${p.name}` });
+        }
+
+        if (isReadySelected && anyMeasurements) {
+          return res.status(400).json({ message: `Please choose either a size OR custom measurements for: ${p.name}` });
+        }
+
+        if (hasCustomOption) {
+          if (!hasReadyOption) {
+            if (!validMeasurements) {
+              return res.status(400).json({ message: `Custom measurements are required for: ${p.name}` });
+            }
+          } else {
+            // Both options exist — require one of them.
+            if (!isReadySelected && !validMeasurements) {
+              return res.status(400).json({ message: `Please select a size or enter custom measurements for: ${p.name}` });
+            }
+          }
+        } else if (hasReadyOption) {
+          // Ready-only product: if a size is provided, ensure it's available.
+          if (size && (!Object.prototype.hasOwnProperty.call(stock as any, size) || Number((stock as any)[size]) < item.quantity)) {
+            return res.status(400).json({ message: `Selected size is not available for: ${p.name}` });
+          }
+        }
+
         productsById.set(item.productId, p);
       }
 
       const subtotal = data.items.reduce((acc, item) => {
         const p = productsById.get(item.productId)!;
-        return acc + p.price * item.quantity;
+        const v = (item as any).variant as ("set" | "top" | undefined);
+        const topPrice = (p as any).topPrice as number | null | undefined;
+        const price = v === "top" && typeof topPrice === "number" ? topPrice : p.price;
+        return acc + price * item.quantity;
       }, 0);
       const itemCount = data.items.reduce((acc, item) => acc + item.quantity, 0);
       const cityRaw = (data.customer.city || "").toString().trim();
@@ -461,13 +555,17 @@ export async function registerRoutes(
         data.items.map(async (item) => {
           const notesEn = !isManual && item.notes ? await translateToEnglish(item.notes) : null;
           const p = productsById.get(item.productId)!;
+          const v = (item as any).variant as ("set" | "top" | undefined);
+          const topPrice = (p as any).topPrice as number | null | undefined;
+          const price = v === "top" && typeof topPrice === "number" ? topPrice : p.price;
           return {
             orderId: 0,
             productId: item.productId,
             productName: item.productName || p.name,
             quantity: item.quantity,
-            price: p.price,
+            price,
             image: p.images?.[0] || item.image,
+            variant: v ?? null,
             size: item.size || null,
             measurements: item.measurements || null,
             notes: item.notes || null,
@@ -503,6 +601,7 @@ export async function registerRoutes(
         if (!p || !item.size) continue;
         const stock = (p as { stockBySize?: Record<string, number> | null }).stockBySize;
         if (!stock || typeof stock !== "object") continue;
+        if (!Object.prototype.hasOwnProperty.call(stock, item.size)) continue;
         const current = Number(stock[item.size]) ?? 0;
         if (current <= 0) continue;
         const next = Math.max(0, current - item.quantity);
@@ -557,6 +656,7 @@ export async function registerRoutes(
       quantity: z.number().min(1),
       price: z.number(),
       image: z.string(),
+      variant: z.enum(["set", "top"]).optional().nullable(),
       size: z.string().optional().nullable(),
       measurements: z.record(z.string()).optional().nullable(),
       notes: z.string().optional().nullable(),

@@ -73,6 +73,7 @@ export const orderItems = pgTable("order_items", {
   quantity: integer("quantity").notNull().default(1),
   price: real("price").notNull(),
   image: text("image").notNull(),
+  variant: text("variant"), // "set" | "top" (optional)
   size: text("size"),
   measurements: jsonb("measurements"),
   notes: text("notes"),

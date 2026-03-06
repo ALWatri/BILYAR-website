@@ -112,7 +112,7 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     const logoHeight = 36;
     const logoWidth = 180;
     if (logoPath) {
-      doc.image(logoPath, contentLeft + (contentWidth - logoWidth) / 2, doc.y, { width: logoWidth });
+      doc.image(logoPath, contentLeft + (contentWidth - logoWidth) / 2, doc.y, { width: logoWidth } as any);
       doc.y += logoHeight + 8;
     } else {
       doc.fontSize(32).fillColor(GOLD).font("Helvetica-Bold").text("BILYAR.", contentLeft, doc.y, { align: "center", width: contentWidth });
@@ -125,8 +125,8 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     // BILL TO (left) | Invoice meta (right) - ASCII-only for PDFKit
     doc.fontSize(9).fillColor(MUTED).font("Helvetica-Bold").text("BILL TO", contentLeft);
     doc.y += 4;
-    doc.fontSize(10).fillColor(INK).font("Helvetica").text(driver.name, contentLeft, { width: 280 });
-    doc.fontSize(9).text(`${driver.address}\n${driver.city}, ${driver.country}\n${safeStr(order?.customerPhone)}\n${safeStr(order?.customerEmail)}`, contentLeft, { width: 280 });
+    doc.fontSize(10).fillColor(INK).font("Helvetica").text(driver.name, contentLeft, doc.y, { width: 280 });
+    doc.fontSize(9).text(`${driver.address}\n${driver.city}, ${driver.country}\n${safeStr(order?.customerPhone)}\n${safeStr(order?.customerEmail)}`, contentLeft, doc.y, { width: 280 });
     const billToBottom = doc.y;
 
     doc.y = 50 + 28 + 12;

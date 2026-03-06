@@ -141,6 +141,7 @@ export default function Checkout() {
             quantity: item.quantity,
             price,
             image: item.product.images[0],
+            variant: item.variant,
             size: item.size,
             measurements: item.measurements,
             notes: item.notes,
