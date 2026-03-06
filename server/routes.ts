@@ -592,20 +592,14 @@ export async function registerRoutes(
       const total = subtotal + shippingCost;
       const isManual = data.paymentMethod === "manual";
 
-      let customerNameEn: string, customerAddressEn: string, customerCityEn: string, customerCountryEn: string;
-      if (isManual) {
-        customerNameEn = data.customer.name;
-        customerAddressEn = data.customer.address;
-        customerCityEn = data.customer.city;
-        customerCountryEn = data.customer.country;
-      } else {
-        [customerNameEn, customerAddressEn, customerCityEn, customerCountryEn] = await Promise.all([
-          translateToEnglish(data.customer.name),
-          translateToEnglish(data.customer.address),
-          translateToEnglish(data.customer.city),
-          translateToEnglish(data.customer.country),
-        ]);
-      }
+      // Always compute English variants so invoices/driver slips render correctly
+      // (PDFKit fallback cannot render Arabic reliably).
+      const [customerNameEn, customerAddressEn, customerCityEn, customerCountryEn] = await Promise.all([
+        translateToEnglish(data.customer.name),
+        translateToEnglish(data.customer.address),
+        translateToEnglish(data.customer.city),
+        translateToEnglish(data.customer.country),
+      ]);
 
       const itemsWithNotesEn = await Promise.all(
         data.items.map(async (item) => {
@@ -638,10 +632,10 @@ export async function registerRoutes(
           customerAddress: data.customer.address,
           customerCity: data.customer.city,
           customerCountry: data.customer.country,
-          customerNameEn: isManual ? null : customerNameEn,
-          customerAddressEn: isManual ? null : customerAddressEn,
-          customerCityEn: isManual ? null : customerCityEn,
-          customerCountryEn: isManual ? null : customerCountryEn,
+          customerNameEn,
+          customerAddressEn,
+          customerCityEn,
+          customerCountryEn,
           status: "Pending",
           paymentMethod: data.paymentMethod ?? "tap",
           paymentStatus: isManual ? "manual" : "pending",
@@ -745,21 +739,21 @@ export async function registerRoutes(
       if (data.customer) {
         if (data.customer.name != null) {
           orderData.customerName = data.customer.name;
-          orderData.customerNameEn = data.customer.name;
+          orderData.customerNameEn = await translateToEnglish(data.customer.name);
         }
         if (data.customer.email != null) orderData.customerEmail = data.customer.email;
         if (data.customer.phone != null) orderData.customerPhone = data.customer.phone;
         if (data.customer.address != null) {
           orderData.customerAddress = data.customer.address;
-          orderData.customerAddressEn = data.customer.address;
+          orderData.customerAddressEn = await translateToEnglish(data.customer.address);
         }
         if (data.customer.city != null) {
           orderData.customerCity = data.customer.city;
-          orderData.customerCityEn = data.customer.city;
+          orderData.customerCityEn = await translateToEnglish(data.customer.city);
         }
         if (data.customer.country != null) {
           orderData.customerCountry = data.customer.country;
-          orderData.customerCountryEn = data.customer.country;
+          orderData.customerCountryEn = await translateToEnglish(data.customer.country);
         }
       }
       if (data.status != null) orderData.status = data.status;

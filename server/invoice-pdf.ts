@@ -4,6 +4,7 @@ import fs from "fs";
 import type { Order, OrderItem, Settings } from "@shared/schema";
 import { getInvoiceHtml } from "./invoice-html";
 import { toEnglishCity, toEnglishText, addressToEnglish } from "./invoice-locale";
+import { hasArabic, translateToEnglish } from "./translate";
 
 type OrderWithItems = Order & { items: OrderItem[] };
 
@@ -143,29 +144,35 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     doc.text(`Email: ${safeStr(order?.customerEmail)}`, contentLeft, doc.y, { width: 280 });
     const billToBottom = doc.y;
 
+    const metaWidth = 180;
+    const metaX = contentLeft + contentWidth - metaWidth;
     doc.y = 50 + (logoPath ? logoHeight + 8 : 28) + 12;
     doc.fontSize(9).fillColor(INK);
-    doc.text(`Order # ${safeStr(order?.orderNumber)}`, contentRight, doc.y, { width: 180, align: "right" });
+    doc.text(`Order # ${safeStr(order?.orderNumber)}`, metaX, doc.y, { width: metaWidth, align: "right" });
     doc.y += 14;
-    doc.text(`Date of issue: ${formatDate(safeStr(order?.createdAt))}`, contentRight, doc.y, { width: 180, align: "right" });
+    doc.text(`Date of issue: ${formatDate(safeStr(order?.createdAt))}`, metaX, doc.y, { width: metaWidth, align: "right" });
     doc.y += 14;
-    doc.fillColor(EMERALD).text("Status: Paid", contentRight, doc.y, { width: 180, align: "right" });
+    doc.fillColor(EMERALD).text("Status: Paid", metaX, doc.y, { width: metaWidth, align: "right" });
 
     doc.y = Math.max(billToBottom, doc.y) + 20;
 
     // Table header
-    const col1 = contentLeft;
-    const col2 = contentLeft + 260;
-    const col3 = contentLeft + 340;
-    const col4 = contentRight - 80;
+    const descX = contentLeft + 8;
+    const descW = 270;
+    const priceX = descX + descW;
+    const priceW = 85;
+    const qtyX = priceX + priceW;
+    const qtyW = 45;
+    const totalX = qtyX + qtyW;
+    const totalW = contentRight - totalX - 8;
     const th = doc.y;
     const ROW_HEIGHT = 20;
     doc.rect(contentLeft, th, contentWidth, 22).fill(EMERALD);
     doc.fontSize(9).fillColor("#ffffff").font("Helvetica-Bold");
-    doc.text("DESCRIPTION", col1 + 8, th + 6);
-    doc.text("PRICE", col2, th + 6);
-    doc.text("QTY", col3, th + 6);
-    doc.text("TOTAL", col4, th + 6);
+    doc.text("DESCRIPTION", descX, th + 6, { width: descW });
+    doc.text("PRICE", priceX, th + 6, { width: priceW, align: "right" });
+    doc.text("QTY", qtyX, th + 6, { width: qtyW, align: "center" });
+    doc.text("TOTAL", totalX, th + 6, { width: totalW, align: "right" });
     doc.y = th + 28;
 
     // Table rows — fixed row height for consistent spacing
@@ -174,10 +181,10 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
       const price = safeNum(item?.price, 0);
       const qty = Math.max(1, Math.floor(safeNum(item?.quantity, 1)));
       const lineTotal = (price * qty).toFixed(3);
-      doc.text(safeStr(item?.productName), col1 + 8, doc.y, { width: 245 });
-      doc.text(price.toFixed(3) + " KWD", col2, doc.y);
-      doc.text(String(qty), col3, doc.y);
-      doc.text(lineTotal + " KWD", col4, doc.y);
+      doc.text(safeStr(item?.productName), descX, doc.y, { width: descW });
+      doc.text(price.toFixed(3) + " KWD", priceX, doc.y, { width: priceW, align: "right" });
+      doc.text(String(qty), qtyX, doc.y, { width: qtyW, align: "center" });
+      doc.text(lineTotal + " KWD", totalX, doc.y, { width: totalW, align: "right" });
       doc.y += ROW_HEIGHT;
     }
     doc.y += 14;
@@ -254,10 +261,49 @@ async function getBrowser() {
 
 const USE_PUPPETEER = process.env.DISABLE_PUPPETEER !== "1" && !process.env.RENDER;
 
+async function enrichOrderForInvoice(order: OrderWithItems): Promise<OrderWithItems> {
+  const o = order as OrderWithItems & {
+    customerNameEn?: string | null;
+    customerAddressEn?: string | null;
+    customerCityEn?: string | null;
+    customerCountryEn?: string | null;
+  };
+
+  let customerNameEn = (o.customerNameEn || "").trim();
+  if (!customerNameEn || hasArabic(customerNameEn)) {
+    const translated = await translateToEnglish(order.customerName || "");
+    customerNameEn = translated && !hasArabic(translated) ? translated : "Customer";
+  }
+
+  let customerAddressEn = (o.customerAddressEn || "").trim();
+  if (!customerAddressEn || hasArabic(customerAddressEn)) {
+    customerAddressEn = addressToEnglish(order.customerAddress);
+  }
+
+  let customerCityEn = (o.customerCityEn || "").trim();
+  if (!customerCityEn || hasArabic(customerCityEn)) {
+    customerCityEn = toEnglishCity(order.customerCity);
+  }
+
+  let customerCountryEn = (o.customerCountryEn || "").trim();
+  if (!customerCountryEn || hasArabic(customerCountryEn)) {
+    customerCountryEn = toEnglishText(order.customerCountry, "Kuwait");
+  }
+
+  return {
+    ...(order as any),
+    customerNameEn,
+    customerAddressEn,
+    customerCityEn,
+    customerCountryEn,
+  } as OrderWithItems;
+}
+
 export async function generateInvoicePdf(order: OrderWithItems, settings?: Settings | null): Promise<Buffer> {
+  const enriched = await enrichOrderForInvoice(order);
   if (USE_PUPPETEER) {
     try {
-      const html = getInvoiceHtml(order, settings);
+      const html = getInvoiceHtml(enriched, settings);
       const b = await getBrowser();
       const page = await b.newPage();
       try {
@@ -278,5 +324,5 @@ export async function generateInvoicePdf(order: OrderWithItems, settings?: Setti
       console.warn("Puppeteer invoice failed, using PDFKit:", puppeteerErr instanceof Error ? puppeteerErr.message : String(puppeteerErr));
     }
   }
-  return generatePdfWithPdfKit(order, settings);
+  return generatePdfWithPdfKit(enriched, settings);
 }
