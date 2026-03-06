@@ -1005,8 +1005,32 @@ export async function registerRoutes(
     }
 
     if (isPublicUrl) {
-      const invoicePath = getSignedInvoicePath(orderId, publicBase, true);
-      const invoiceUrl = `${publicBase}${invoicePath}`;
+      let invoiceUrl = "";
+      try {
+        // Pre-generate a public PDF URL for Twilio to reduce dynamic fetch failures.
+        const settings = await storage.getSettings();
+        const pdf = await generateInvoicePdf(order, settings);
+        const bucket = getFirebaseStorageBucket();
+        if (bucket) {
+          const objectName = `invoices/invoice-${order.orderNumber}-${Date.now()}.pdf`;
+          const file = bucket.file(objectName);
+          await file.save(pdf, { metadata: { contentType: "application/pdf" } });
+          await file.makePublic();
+          invoiceUrl = `https://storage.googleapis.com/${bucket.name}/${objectName}`;
+        } else {
+          const invoicesDir = path.join(UPLOADS_DIR, "invoices");
+          if (!fs.existsSync(invoicesDir)) fs.mkdirSync(invoicesDir, { recursive: true });
+          const filename = `invoice-${order.orderNumber}-${Date.now()}.pdf`;
+          fs.writeFileSync(path.join(invoicesDir, filename), pdf);
+          invoiceUrl = `${publicBase}/uploads/invoices/${encodeURIComponent(filename)}`;
+        }
+      } catch (err) {
+        console.warn("WhatsApp: pre-generated invoice URL failed, using signed route:", err);
+      }
+      if (!invoiceUrl) {
+        const invoicePath = getSignedInvoicePath(orderId, publicBase, true);
+        invoiceUrl = `${publicBase}${invoicePath}`;
+      }
       const docRes = await sendDocument(
         order.customerPhone,
         invoiceUrl,
