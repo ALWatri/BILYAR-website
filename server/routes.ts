@@ -1034,31 +1034,39 @@ export async function registerRoutes(
       const invoicePath = getSignedInvoicePath(orderId, publicBase, true);
       invoiceCandidates.push(`${publicBase}${invoicePath}`);
 
-      // Pick first URL that is reachable from server side before sending to Twilio.
-      let invoiceUrl = invoiceCandidates[0] || "";
+      // Prefer URLs that are reachable from server side; then try each with Twilio until one works.
+      const reachableCandidates: string[] = [];
       for (const candidate of invoiceCandidates) {
         try {
           const check = await fetch(candidate, { method: "GET" });
           if (check.ok) {
-            invoiceUrl = candidate;
-            break;
+            reachableCandidates.push(candidate);
+            continue;
           }
           console.warn("WhatsApp: invoice candidate not reachable", { candidate, status: check.status });
         } catch (checkErr) {
           console.warn("WhatsApp: invoice candidate fetch failed", { candidate, error: String(checkErr) });
         }
       }
-      console.log("WhatsApp: using invoice URL", invoiceUrl);
-      const docRes = await sendDocument(
-        order.customerPhone,
-        invoiceUrl,
-        `invoice-${order.orderNumber}.pdf`,
-        `Your order ${order.orderNumber} - BILYAR • طلبك ${order.orderNumber}`
-      );
-      if (!docRes.ok) {
-        console.warn("WhatsApp invoice PDF:", docRes.error);
-      } else {
-        console.log(`WhatsApp: Invoice PDF sent to ${order.customerPhone}`);
+      const tryCandidates = reachableCandidates.length > 0 ? reachableCandidates : invoiceCandidates;
+      let sent = false;
+      for (const invoiceUrl of tryCandidates) {
+        console.log("WhatsApp: trying invoice URL", invoiceUrl);
+        const docRes = await sendDocument(
+          order.customerPhone,
+          invoiceUrl,
+          `invoice-${order.orderNumber}.pdf`,
+          `Your order ${order.orderNumber} - BILYAR • طلبك ${order.orderNumber}`
+        );
+        if (docRes.ok) {
+          sent = true;
+          console.log(`WhatsApp: Invoice PDF sent to ${order.customerPhone}`);
+          break;
+        }
+        console.warn("WhatsApp invoice PDF failed for URL:", { invoiceUrl, error: docRes.error });
+      }
+      if (!sent) {
+        console.error("WhatsApp invoice PDF: all candidate URLs failed");
       }
     } else {
       console.warn("WhatsApp: Skipping invoice PDF (SITE_URL not set; Twilio needs public URL to fetch PDF)");
