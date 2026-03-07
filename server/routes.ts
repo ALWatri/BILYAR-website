@@ -1009,24 +1009,36 @@ export async function registerRoutes(
       try {
         const settings = await storage.getSettings();
         const pdf = await generateInvoicePdf(order, settings);
+        console.log("WhatsApp: invoice PDF size bytes", pdf.length);
+        // WhatsApp document limits apply; keep visibility in logs.
+        if (pdf.length > 15 * 1024 * 1024) {
+          console.warn("WhatsApp: invoice PDF may exceed WhatsApp media size limits", { bytes: pdf.length });
+        }
+
+        // Always write a same-domain static file URL first (no auth/query required).
+        const invoicesDir = path.join(UPLOADS_DIR, "invoices");
+        if (!fs.existsSync(invoicesDir)) fs.mkdirSync(invoicesDir, { recursive: true });
+        const filename = `invoice-${order.orderNumber}-${Date.now()}.pdf`;
+        fs.writeFileSync(path.join(invoicesDir, filename), pdf);
+        invoiceCandidates.push(`${publicBase}/uploads/invoices/${encodeURIComponent(filename)}`);
+
         const bucket = getFirebaseStorageBucket();
         if (bucket) {
-          // Use a signed GCS URL so Twilio can fetch even when public ACL is restricted.
           const objectName = `invoices/invoice-${order.orderNumber}-${Date.now()}.pdf`;
           const file = bucket.file(objectName);
           await file.save(pdf, { metadata: { contentType: "application/pdf" } });
-          const [signedUrl] = await file.getSignedUrl({
-            version: "v4",
-            action: "read",
-            expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
-          });
-          invoiceCandidates.push(signedUrl);
-        } else {
-          const invoicesDir = path.join(UPLOADS_DIR, "invoices");
-          if (!fs.existsSync(invoicesDir)) fs.mkdirSync(invoicesDir, { recursive: true });
-          const filename = `invoice-${order.orderNumber}-${Date.now()}.pdf`;
-          fs.writeFileSync(path.join(invoicesDir, filename), pdf);
-          invoiceCandidates.push(`${publicBase}/uploads/invoices/${encodeURIComponent(filename)}`);
+          try {
+            await file.makePublic();
+            invoiceCandidates.push(`https://storage.googleapis.com/${bucket.name}/${objectName}`);
+          } catch (publicErr) {
+            console.warn("WhatsApp: makePublic failed, using signed GCS URL", publicErr);
+            const [signedUrl] = await file.getSignedUrl({
+              version: "v4",
+              action: "read",
+              expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+            });
+            invoiceCandidates.push(signedUrl);
+          }
         }
       } catch (err) {
         console.warn("WhatsApp: pre-generated invoice file failed:", err);

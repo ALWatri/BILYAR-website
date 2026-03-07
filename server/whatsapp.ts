@@ -88,7 +88,10 @@ export async function sendText(to: string, text: string): Promise<{ ok: boolean;
     await client.messages.create(params as any);
     return { ok: true };
   } catch (err: any) {
-    return { ok: false, error: err?.message || String(err) };
+    const code = err?.code ? `code=${err.code}` : "";
+    const status = err?.status ? `status=${err.status}` : "";
+    const msg = err?.message || String(err);
+    return { ok: false, error: [code, status, msg].filter(Boolean).join(" | ") };
   }
 }
 
