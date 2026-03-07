@@ -1005,32 +1005,50 @@ export async function registerRoutes(
     }
 
     if (isPublicUrl) {
-      let invoiceUrl = "";
+      const invoiceCandidates: string[] = [];
       try {
-        // Pre-generate a public PDF URL for Twilio to reduce dynamic fetch failures.
         const settings = await storage.getSettings();
         const pdf = await generateInvoicePdf(order, settings);
         const bucket = getFirebaseStorageBucket();
         if (bucket) {
+          // Use a signed GCS URL so Twilio can fetch even when public ACL is restricted.
           const objectName = `invoices/invoice-${order.orderNumber}-${Date.now()}.pdf`;
           const file = bucket.file(objectName);
           await file.save(pdf, { metadata: { contentType: "application/pdf" } });
-          await file.makePublic();
-          invoiceUrl = `https://storage.googleapis.com/${bucket.name}/${objectName}`;
+          const [signedUrl] = await file.getSignedUrl({
+            version: "v4",
+            action: "read",
+            expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+          });
+          invoiceCandidates.push(signedUrl);
         } else {
           const invoicesDir = path.join(UPLOADS_DIR, "invoices");
           if (!fs.existsSync(invoicesDir)) fs.mkdirSync(invoicesDir, { recursive: true });
           const filename = `invoice-${order.orderNumber}-${Date.now()}.pdf`;
           fs.writeFileSync(path.join(invoicesDir, filename), pdf);
-          invoiceUrl = `${publicBase}/uploads/invoices/${encodeURIComponent(filename)}`;
+          invoiceCandidates.push(`${publicBase}/uploads/invoices/${encodeURIComponent(filename)}`);
         }
       } catch (err) {
-        console.warn("WhatsApp: pre-generated invoice URL failed, using signed route:", err);
+        console.warn("WhatsApp: pre-generated invoice file failed:", err);
       }
-      if (!invoiceUrl) {
-        const invoicePath = getSignedInvoicePath(orderId, publicBase, true);
-        invoiceUrl = `${publicBase}${invoicePath}`;
+      const invoicePath = getSignedInvoicePath(orderId, publicBase, true);
+      invoiceCandidates.push(`${publicBase}${invoicePath}`);
+
+      // Pick first URL that is reachable from server side before sending to Twilio.
+      let invoiceUrl = invoiceCandidates[0] || "";
+      for (const candidate of invoiceCandidates) {
+        try {
+          const check = await fetch(candidate, { method: "GET" });
+          if (check.ok) {
+            invoiceUrl = candidate;
+            break;
+          }
+          console.warn("WhatsApp: invoice candidate not reachable", { candidate, status: check.status });
+        } catch (checkErr) {
+          console.warn("WhatsApp: invoice candidate fetch failed", { candidate, error: String(checkErr) });
+        }
       }
+      console.log("WhatsApp: using invoice URL", invoiceUrl);
       const docRes = await sendDocument(
         order.customerPhone,
         invoiceUrl,
