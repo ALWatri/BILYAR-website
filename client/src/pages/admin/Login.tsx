@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { translations } from "@/lib/translations";
+import { setAdminToken } from "@/lib/queryClient";
 import { Globe } from "lucide-react";
 
 export default function Login() {
@@ -57,9 +58,7 @@ export default function Login() {
       }
       const data = await res.json().catch(() => ({}));
       if (data.token) {
-        try {
-          sessionStorage.setItem("bilyar_admin_token", data.token);
-        } catch (_) {}
+        setAdminToken(data.token);
       }
       localStorage.setItem("isAdminAuthenticated", "true");
       setLocation("/admin");

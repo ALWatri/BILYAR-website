@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { setAdminToken } from "@/lib/queryClient";
 import { LayoutDashboard, ShoppingBag, Package, Settings, LogOut, Globe, Users, Tags, Layers, MessageCircle, Menu, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -40,10 +41,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   const handleLogout = () => {
     fetch("/api/admin/logout", { method: "POST", credentials: "include" }).catch(() => {});
+    setAdminToken(null);
     localStorage.removeItem("isAdminAuthenticated");
-    try {
-      sessionStorage.removeItem("bilyar_admin_token");
-    } catch (_) {}
     setLocation("/admin/login");
   };
 
