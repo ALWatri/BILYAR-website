@@ -3,7 +3,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { useRoute } from "wouter";
 import { useState, useEffect, useRef } from "react";
-import { Truck, ShieldCheck, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -416,17 +416,6 @@ export default function ProductDetails() {
                 )}
               </Button>
             )}
-
-              <div className="grid grid-cols-2 gap-4 text-center py-6 border-y border-border">
-                <div className="flex flex-col items-center gap-2">
-                  <Truck className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-xs uppercase tracking-wide text-muted-foreground">{t.free_shipping}</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  <ShieldCheck className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-xs uppercase tracking-wide text-muted-foreground">{t.secure_checkout}</span>
-                </div>
-              </div>
 
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="details">

@@ -106,7 +106,8 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     const items = Array.isArray(order?.items) ? order.items : [];
     const total = safeNum(order?.total, 0);
     const shippingCost = safeNum(order?.shippingCost, 0);
-    const subtotal = total - shippingCost;
+    const discountAmount = safeNum((order as Order & { discountAmount?: number | null }).discountAmount, 0);
+    const subtotal = total + discountAmount - shippingCost;
 
     const doc = new PDFDocument({ margin: 0, size: "A4" });
     const chunks: Buffer[] = [];
@@ -243,6 +244,12 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     doc.text("Subtotal", sumLabelX, summaryY, { width: sumLabelW, align: "right", lineBreak: false });
     doc.text(subtotal.toFixed(3) + " KWD", totalX, summaryY, { width: totalW, align: "right", lineBreak: false });
     summaryY += 18;
+    if (discountAmount > 0) {
+      const code = (order as Order & { discountCode?: string | null }).discountCode;
+      doc.text("Discount" + (code ? ` (${code})` : ""), sumLabelX, summaryY, { width: sumLabelW, align: "right", lineBreak: false });
+      doc.text("-" + discountAmount.toFixed(3) + " KWD", totalX, summaryY, { width: totalW, align: "right", lineBreak: false });
+      summaryY += 18;
+    }
     doc.text("Delivery", sumLabelX, summaryY, { width: sumLabelW, align: "right", lineBreak: false });
     doc.text(shippingCost.toFixed(3) + " KWD", totalX, summaryY, { width: totalW, align: "right", lineBreak: false });
     summaryY += 18;

@@ -96,7 +96,6 @@ export default function Home() {
         <div className="container mx-auto px-6">
           <div className="flex justify-between items-end mb-12">
             <div>
-              <span className="text-accent uppercase tracking-widest text-xs font-bold block mb-2">{t.most_desired}</span>
               <h2 className="text-3xl md:text-5xl font-serif">{t.best_sellers}</h2>
             </div>
             <Link href="/shop" className="hidden md:flex items-center gap-2 text-primary hover:text-accent transition-colors uppercase text-xs font-bold tracking-widest">

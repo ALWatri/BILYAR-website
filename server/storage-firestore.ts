@@ -7,11 +7,13 @@ import type {
   Order,
   OrderItem,
   Settings,
+  Discount,
   InsertProduct,
   InsertCategory,
   InsertCollection,
   InsertOrder,
   InsertOrderItem,
+  InsertDiscount,
 } from "@shared/schema";
 
 const COLL = {
@@ -22,6 +24,7 @@ const COLL = {
   orderItems: "order_items",
   settings: "settings",
   counters: "counters",
+  discounts: "discounts",
 } as const;
 
 function getDb() {
@@ -100,6 +103,8 @@ function toOrder(doc: DocumentSnapshot): Order {
     inventoryAdjusted: d.inventoryAdjusted ?? false,
     total: d.total,
     shippingCost: d.shippingCost ?? 0,
+    discountCode: d.discountCode ?? null,
+    discountAmount: d.discountAmount ?? null,
     createdAt: d.createdAt ?? new Date().toISOString().slice(0, 10),
   };
 }
@@ -135,12 +140,28 @@ function toSettings(doc: DocumentSnapshot): Settings {
   };
 }
 
-async function nextId(collection: "products" | "categories" | "collections" | "orders" | "orderItems"): Promise<number> {
+function toDiscount(doc: DocumentSnapshot): Discount {
+  const d = doc.data()!;
+  return {
+    id: d.id,
+    code: d.code,
+    type: d.type ?? "percentage",
+    value: d.value ?? 0,
+    minOrderAmount: d.minOrderAmount ?? null,
+    maxUses: d.maxUses ?? null,
+    usedCount: d.usedCount ?? 0,
+    validFrom: d.validFrom ?? null,
+    validUntil: d.validUntil ?? null,
+    isActive: d.isActive ?? true,
+  };
+}
+
+async function nextId(collection: "products" | "categories" | "collections" | "orders" | "orderItems" | "discounts"): Promise<number> {
   const db = getDb();
   const ref = db.collection(COLL.counters).doc("next");
   const result = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    const data = snap.data() ?? { products: 0, categories: 0, collections: 0, orders: 0, orderItems: 0 };
+    const data = snap.data() ?? { products: 0, categories: 0, collections: 0, orders: 0, orderItems: 0, discounts: 0 };
     const key = collection === "orderItems" ? "orderItems" : collection;
     const next = (data[key] ?? 0) + 1;
     tx.set(ref, { ...data, [key]: next });
@@ -176,6 +197,13 @@ export interface IStorage {
 
   getSettings(): Promise<Settings | undefined>;
   updateSettings(data: Partial<Settings>): Promise<Settings>;
+
+  getDiscounts(): Promise<Discount[]>;
+  getDiscountByCode(code: string): Promise<Discount | undefined>;
+  createDiscount(discount: InsertDiscount): Promise<Discount>;
+  updateDiscount(id: number, data: Partial<InsertDiscount>): Promise<Discount | undefined>;
+  deleteDiscount(id: number): Promise<boolean>;
+  incrementDiscountUsage(id: number): Promise<void>;
 }
 
 export class FirestoreStorage implements IStorage {
@@ -392,6 +420,8 @@ export class FirestoreStorage implements IStorage {
       inventoryAdjusted: (orderData as any).inventoryAdjusted ?? false,
       total: orderData.total,
       shippingCost: orderData.shippingCost ?? 0,
+      discountCode: (orderData as Record<string, unknown>).discountCode ?? null,
+      discountAmount: (orderData as Record<string, unknown>).discountAmount ?? null,
       createdAt,
     });
     const items: OrderItem[] = [];
@@ -532,5 +562,70 @@ export class FirestoreStorage implements IStorage {
     const ref = db.collection(COLL.settings).doc("store");
     await ref.set({ id: 1, ...payload });
     return { id: 1, ...payload } as Settings;
+  }
+
+  async getDiscounts(): Promise<Discount[]> {
+    const db = getDb();
+    const snap = await db.collection(COLL.discounts).orderBy("id", "desc").get();
+    return snap.docs.map((doc) => toDiscount(doc));
+  }
+
+  async getDiscountByCode(code: string): Promise<Discount | undefined> {
+    const db = getDb();
+    const normalized = code.trim().toUpperCase();
+    const snap = await db.collection(COLL.discounts).where("code", "==", normalized).limit(1).get();
+    if (snap.empty) return undefined;
+    return toDiscount(snap.docs[0]);
+  }
+
+  async createDiscount(discount: InsertDiscount): Promise<Discount> {
+    const db = getDb();
+    const id = await nextId("discounts");
+    const code = (discount.code || "").trim().toUpperCase();
+    const data = {
+      id,
+      code,
+      type: discount.type ?? "percentage",
+      value: discount.value ?? 0,
+      minOrderAmount: discount.minOrderAmount ?? null,
+      maxUses: discount.maxUses ?? null,
+      usedCount: 0,
+      validFrom: discount.validFrom ?? null,
+      validUntil: discount.validUntil ?? null,
+      isActive: discount.isActive ?? true,
+    };
+    await db.collection(COLL.discounts).doc(String(id)).set(data);
+    return data as Discount;
+  }
+
+  async updateDiscount(id: number, data: Partial<InsertDiscount>): Promise<Discount | undefined> {
+    const db = getDb();
+    const ref = db.collection(COLL.discounts).doc(String(id));
+    const snap = await ref.get();
+    if (!snap.exists) return undefined;
+    const update: Record<string, unknown> = { ...data };
+    if (update.code) update.code = String(update.code).trim().toUpperCase();
+    if (Object.keys(update).length === 0) return toDiscount(snap);
+    await ref.update(update);
+    const updated = await ref.get();
+    return toDiscount(updated);
+  }
+
+  async deleteDiscount(id: number): Promise<boolean> {
+    const db = getDb();
+    const ref = db.collection(COLL.discounts).doc(String(id));
+    const snap = await ref.get();
+    if (!snap.exists) return false;
+    await ref.delete();
+    return true;
+  }
+
+  async incrementDiscountUsage(id: number): Promise<void> {
+    const db = getDb();
+    const ref = db.collection(COLL.discounts).doc(String(id));
+    const snap = await ref.get();
+    if (!snap.exists) return;
+    const current = (snap.data()?.usedCount ?? 0) + 1;
+    await ref.update({ usedCount: current });
   }
 }

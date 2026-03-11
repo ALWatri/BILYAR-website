@@ -66,9 +66,11 @@ export function getInvoiceHtml(order: OrderWithItems, settings?: Settings | null
     )
     .join("");
 
-  const subtotal = (order.total - order.shippingCost).toFixed(3);
+  const discountAmount = Number((order as { discountAmount?: number | null }).discountAmount) || 0;
+  const subtotal = (order.total + discountAmount - order.shippingCost).toFixed(3);
   const shipping = order.shippingCost.toFixed(3);
   const total = order.total.toFixed(3);
+  const discountCode = (order as { discountCode?: string | null }).discountCode;
   const paymentMethod = paymentMethodLabel((order as { paymentMethod?: string }).paymentMethod);
   const paymentId = escapeHtml((order as { paymentId?: string }).paymentId || "—");
 
@@ -153,6 +155,7 @@ ${itemsHtml}
 <div class="summary-wrap">
 <div class="summary">
 <div class="row"><span>Subtotal</span><span>${subtotal} KWD</span></div>
+${discountAmount > 0 ? `<div class="row"><span>Discount${discountCode ? ` (${escapeHtml(discountCode)})` : ""}</span><span>-${discountAmount.toFixed(3)} KWD</span></div>` : ""}
 <div class="row"><span>Delivery</span><span>${shipping} KWD</span></div>
 <div class="row total-row"><span>Total</span><span>${total} KWD</span></div>
 </div>

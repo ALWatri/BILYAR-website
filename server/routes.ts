@@ -85,7 +85,19 @@ export async function registerRoutes(
   ensureUploadsDir();
   app.use("/uploads", express.static(UPLOADS_DIR));
 
-  app.post("/api/upload", memoryUpload.array("images", 20), async (req, res) => {
+  function isAdminRequest(req: { headers: { cookie?: string; authorization?: string } }): boolean {
+    const bearer = req.headers.authorization?.replace(/^Bearer\s+/i, "").trim();
+    return verifyAdminSession(req.headers.cookie) || verifyAdminSessionValue(bearer);
+  }
+
+  function requireAdmin(req: any, res: any, next: any) {
+    if (!isAdminRequest(req)) {
+      return res.status(401).json({ message: "Admin authentication required" });
+    }
+    return next();
+  }
+
+  app.post("/api/upload", requireAdmin, memoryUpload.array("images", 20), async (req, res) => {
     const files = req.files as Express.Multer.File[] | undefined;
     if (!files?.length) {
       return res.status(400).json({ message: "No images uploaded" });
@@ -200,7 +212,7 @@ export async function registerRoutes(
     outOfStock: z.boolean().optional().default(false),
   });
 
-  app.post("/api/products", async (req, res) => {
+  app.post("/api/products", requireAdmin, async (req, res) => {
     try {
       const data = insertProductSchema.parse(req.body);
       const product = await storage.createProduct(data);
@@ -213,7 +225,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/products/:id", async (req, res) => {
+  app.patch("/api/products/:id", requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid product ID" });
     try {
@@ -229,7 +241,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/products/:id", async (req, res) => {
+  app.delete("/api/products/:id", requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid product ID" });
     const deleted = await storage.deleteProduct(id);
@@ -249,7 +261,7 @@ export async function registerRoutes(
     res.json(categories);
   });
 
-  app.post("/api/categories", async (req, res) => {
+  app.post("/api/categories", requireAdmin, async (req, res) => {
     try {
       const data = insertCategorySchema.parse(req.body);
       const created = await storage.createCategory(data);
@@ -262,7 +274,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/categories/:id", async (req, res) => {
+  app.patch("/api/categories/:id", requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid category ID" });
     try {
@@ -278,7 +290,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/categories/:id", async (req, res) => {
+  app.delete("/api/categories/:id", requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid category ID" });
     const deleted = await storage.deleteCategory(id);
@@ -301,7 +313,7 @@ export async function registerRoutes(
     res.json(collections);
   });
 
-  app.post("/api/collections", async (req, res) => {
+  app.post("/api/collections", requireAdmin, async (req, res) => {
     try {
       const data = insertCollectionSchema.parse(req.body);
       const created = await storage.createCollection(data);
@@ -314,7 +326,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/collections/:id", async (req, res) => {
+  app.patch("/api/collections/:id", requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid collection ID" });
     try {
@@ -330,7 +342,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/collections/:id", async (req, res) => {
+  app.delete("/api/collections/:id", requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid collection ID" });
     const deleted = await storage.deleteCollection(id);
@@ -338,12 +350,12 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
-  app.get("/api/orders", async (_req, res) => {
+  app.get("/api/orders", requireAdmin, async (_req, res) => {
     const orders = await storage.getOrders();
     res.json(orders);
   });
 
-  app.get("/api/orders/:id", async (req, res) => {
+  app.get("/api/orders/:id", requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
     const order = await storage.getOrder(id);
@@ -468,6 +480,7 @@ export async function registerRoutes(
       notes: z.string().optional(),
     })).min(1),
     paymentMethod: z.enum(["tap", "deema", "manual"]).optional().default("tap"),
+    discountCode: z.string().optional(),
   });
 
   function requiredMeasurementKeysForProduct(
@@ -506,6 +519,26 @@ export async function registerRoutes(
       const n = Number(v);
       return Number.isFinite(n) && n > 0;
     });
+  }
+
+  async function validateDiscount(code: string | undefined, subtotalBeforeShipping: number): Promise<{ discountAmount: number; discountId: number; discountCode: string } | null> {
+    if (!code || !code.trim()) return null;
+    const discount = await storage.getDiscountByCode(code);
+    if (!discount || !discount.isActive) return null;
+    const minOrder = discount.minOrderAmount ?? 0;
+    if (subtotalBeforeShipping < minOrder) return null;
+    if (discount.maxUses != null && (discount.usedCount ?? 0) >= discount.maxUses) return null;
+    const now = new Date().toISOString().slice(0, 10);
+    if (discount.validFrom && now < discount.validFrom) return null;
+    if (discount.validUntil && now > discount.validUntil) return null;
+    let amount = 0;
+    if (discount.type === "percentage") {
+      amount = Math.round((subtotalBeforeShipping * Math.min(100, Math.max(0, discount.value)) / 100) * 1000) / 1000;
+    } else {
+      amount = Math.min(subtotalBeforeShipping, Math.max(0, discount.value));
+    }
+    if (amount <= 0) return null;
+    return { discountAmount: amount, discountId: discount.id, discountCode: discount.code };
   }
 
   app.post("/api/orders", async (req, res) => {
@@ -617,7 +650,9 @@ export async function registerRoutes(
       // - Otherwise: 3 KWD
       // - Exceptions (specific areas): 5 KWD
       const shippingCost = itemCount >= 2 ? 0 : (isExpensiveArea ? 5 : 3);
-      const total = subtotal + shippingCost;
+      const discountResult = await validateDiscount(data.discountCode, subtotal);
+      const discountAmount = discountResult?.discountAmount ?? 0;
+      const total = Math.max(0, subtotal + shippingCost - discountAmount);
       const isManual = data.paymentMethod === "manual";
 
       // Keep customer name as-is (no translation). Use structured address conversion for reliable display.
@@ -667,7 +702,9 @@ export async function registerRoutes(
           inventoryAdjusted: false,
           total,
           shippingCost,
-        },
+          discountCode: discountResult?.discountCode ?? null,
+          discountAmount: discountAmount > 0 ? discountAmount : null,
+        } as any,
         itemsWithNotesEn
       );
 
@@ -679,6 +716,13 @@ export async function registerRoutes(
       throw error;
     }
   });
+
+  async function applyDiscountUsageIfAny(orderId: number) {
+    const order = await storage.getOrder(orderId);
+    if (!order?.discountCode) return;
+    const discount = await storage.getDiscountByCode(order.discountCode);
+    if (discount) await storage.incrementDiscountUsage(discount.id);
+  }
 
   async function adjustInventoryForOrder(orderId: number, direction: 1 | -1) {
     const order = await storage.getOrder(orderId);
@@ -699,7 +743,7 @@ export async function registerRoutes(
     }
   }
 
-  app.delete("/api/orders/:id", async (req, res) => {
+  app.delete("/api/orders/:id", requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
     const deleted = await storage.deleteOrder(id);
@@ -707,7 +751,7 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
-  app.patch("/api/orders/:id/status", async (req, res) => {
+  app.patch("/api/orders/:id/status", requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
     const { status } = req.body;
@@ -752,7 +796,7 @@ export async function registerRoutes(
     })).optional(),
   });
 
-  app.patch("/api/orders/:id", async (req, res) => {
+  app.patch("/api/orders/:id", requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
     try {
@@ -845,7 +889,7 @@ export async function registerRoutes(
     });
   });
 
-  app.get("/api/customers", async (_req, res) => {
+  app.get("/api/customers", requireAdmin, async (_req, res) => {
     const orders = await storage.getOrders();
     const PAID_STATUSES = ["Paid", "Processing", "Shipped", "Delivered"];
     const isPaid = (o: { status?: string }) => PAID_STATUSES.includes(o.status || "");
@@ -901,7 +945,7 @@ export async function registerRoutes(
     phone: z.string().min(1).optional(),
   });
 
-  app.patch("/api/customers", async (req, res) => {
+  app.patch("/api/customers", requireAdmin, async (req, res) => {
     try {
       const { id, name, phone } = updateCustomerSchema.parse(req.body);
       const orders = await storage.getOrders();
@@ -920,7 +964,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/customers", async (req, res) => {
+  app.delete("/api/customers", requireAdmin, async (req, res) => {
     const id = typeof req.body?.id === "string" ? req.body.id : typeof req.query?.id === "string" ? req.query.id : undefined;
     if (!id) return res.status(400).json({ message: "Customer id required" });
     const orders = await storage.getOrders();
@@ -955,7 +999,7 @@ export async function registerRoutes(
     defaultShippingCost: z.number().min(0).optional(),
   });
 
-  app.patch("/api/settings", async (req, res) => {
+  app.patch("/api/settings", requireAdmin, async (req, res) => {
     try {
       const data = updateSettingsSchema.parse(req.body);
       const s = await storage.updateSettings(data);
@@ -966,6 +1010,86 @@ export async function registerRoutes(
       }
       throw error;
     }
+  });
+
+  // ===== DISCOUNTS =====
+  app.post("/api/discounts/validate", express.json(), async (req, res) => {
+    try {
+      const { code, subtotal } = req.body;
+      const sub = typeof subtotal === "number" ? subtotal : parseFloat(subtotal);
+      if (!Number.isFinite(sub) || sub < 0) {
+        return res.status(400).json({ valid: false, message: "Invalid subtotal" });
+      }
+      const result = await validateDiscount(typeof code === "string" ? code : undefined, sub);
+      if (!result) {
+        return res.json({ valid: false, message: "Invalid or expired discount code" });
+      }
+      return res.json({
+        valid: true,
+        discountAmount: result.discountAmount,
+        discountCode: result.discountCode,
+      });
+    } catch (err) {
+      console.error("Discount validate error:", err);
+      return res.status(500).json({ valid: false, message: "Validation failed" });
+    }
+  });
+
+  const insertDiscountSchema = z.object({
+    code: z.string().min(1),
+    type: z.enum(["percentage", "amount"]),
+    value: z.number().min(0),
+    minOrderAmount: z.number().min(0).optional().nullable(),
+    maxUses: z.number().int().min(0).optional().nullable(),
+    validFrom: z.string().optional().nullable(),
+    validUntil: z.string().optional().nullable(),
+    isActive: z.boolean().optional().default(true),
+  });
+
+  app.get("/api/discounts", requireAdmin, async (_req, res) => {
+    const list = await storage.getDiscounts();
+    res.json(list);
+  });
+
+  app.post("/api/discounts", requireAdmin, async (req, res) => {
+    try {
+      const data = insertDiscountSchema.parse(req.body);
+      const existing = await storage.getDiscountByCode(data.code);
+      if (existing) {
+        return res.status(400).json({ message: "A discount with this code already exists" });
+      }
+      const created = await storage.createDiscount(data);
+      res.status(201).json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      throw error;
+    }
+  });
+
+  app.patch("/api/discounts/:id", requireAdmin, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid discount ID" });
+    try {
+      const data = insertDiscountSchema.partial().parse(req.body);
+      const updated = await storage.updateDiscount(id, data);
+      if (!updated) return res.status(404).json({ message: "Discount not found" });
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      throw error;
+    }
+  });
+
+  app.delete("/api/discounts/:id", requireAdmin, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid discount ID" });
+    const deleted = await storage.deleteDiscount(id);
+    if (!deleted) return res.status(404).json({ message: "Discount not found" });
+    res.status(204).send();
   });
 
   // ===== WHATSAPP (Twilio) =====
@@ -1110,7 +1234,7 @@ export async function registerRoutes(
     });
   });
 
-  app.post("/api/whatsapp/send-marketing", async (req, res) => {
+  app.post("/api/whatsapp/send-marketing", requireAdmin, async (req, res) => {
     if (!isWhatsAppConfigured()) return res.status(503).json({ message: "WhatsApp not configured" });
     if (!TWILIO_CONTENT_MARKETING) return res.status(503).json({ message: "TWILIO_CONTENT_MARKETING not set" });
     const schema = z.object({ phones: z.array(z.string()).min(1), message: z.string().min(1) });
@@ -1140,7 +1264,7 @@ export async function registerRoutes(
     return isNaN(id) ? null : id;
   }
 
-  app.post("/api/whatsapp/send-order-received", async (req, res) => {
+  app.post("/api/whatsapp/send-order-received", requireAdmin, async (req, res) => {
     if (!isWhatsAppConfigured()) return res.status(503).json({ message: "WhatsApp not configured" });
     const id = await resolveOrderId(req.body?.orderId);
     if (id == null) return res.status(400).json({ message: "orderId or order number (e.g. ORD-XXX) required" });
@@ -1151,7 +1275,7 @@ export async function registerRoutes(
     res.json({ sent: true });
   });
 
-  app.post("/api/whatsapp/send-order-shipped", async (req, res) => {
+  app.post("/api/whatsapp/send-order-shipped", requireAdmin, async (req, res) => {
     if (!isWhatsAppConfigured()) return res.status(503).json({ message: "WhatsApp not configured" });
     const id = await resolveOrderId(req.body?.orderId);
     if (id == null) return res.status(400).json({ message: "orderId or order number (e.g. ORD-XXX) required" });
@@ -1289,6 +1413,7 @@ export async function registerRoutes(
             await adjustInventoryForOrder(id, -1);
             await storage.updateOrder(id, { inventoryAdjusted: true } as any);
           }
+          await applyDiscountUsageIfAny(id);
           sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
           return res.redirect(`${baseUrl}/order/success?orderId=${orderId}&t=${encodeURIComponent(signInvoiceId(id))}`);
         }
@@ -1323,6 +1448,7 @@ export async function registerRoutes(
             await adjustInventoryForOrder(orderId, -1);
             await storage.updateOrder(orderId, { inventoryAdjusted: true } as any);
           }
+          await applyDiscountUsageIfAny(orderId);
         }
       } catch (e) {
         console.error("Tap webhook error:", e);
@@ -1423,6 +1549,7 @@ export async function registerRoutes(
       await adjustInventoryForOrder(id, -1);
       await storage.updateOrder(id, { inventoryAdjusted: true } as any);
     }
+    await applyDiscountUsageIfAny(id);
     sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
     return res.redirect(`${baseUrl}/order/success?orderId=${orderId}&t=${encodeURIComponent(signInvoiceId(id))}`);
   });
@@ -1455,6 +1582,7 @@ export async function registerRoutes(
             await adjustInventoryForOrder(order.id, -1);
             await storage.updateOrder(order.id, { inventoryAdjusted: true } as any);
           }
+          await applyDiscountUsageIfAny(order.id);
           console.log(`Deema webhook: Order ${order.id} payment captured`);
         } else if (status.toLowerCase() === "expired" || status.toLowerCase() === "cancelled") {
           // Don't overwrite if we already marked as paid (e.g. from callback) so successful payments aren't flipped to failed

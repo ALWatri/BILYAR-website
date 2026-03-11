@@ -63,6 +63,8 @@ export const orders = pgTable("orders", {
   inventoryAdjusted: boolean("inventory_adjusted").notNull().default(false),
   total: real("total").notNull(),
   shippingCost: real("shipping_cost").notNull().default(0),
+  discountCode: text("discount_code"),
+  discountAmount: real("discount_amount"),
   createdAt: text("created_at").notNull().default(sql`to_char(now(), 'YYYY-MM-DD')`),
 });
 
@@ -90,6 +92,24 @@ export const settings = pgTable("settings", {
   freeShippingThreshold: real("free_shipping_threshold").notNull().default(90),
   defaultShippingCost: real("default_shipping_cost").notNull().default(5),
 });
+
+export const discounts = pgTable("discounts", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  type: text("type").notNull(), // "percentage" | "amount"
+  value: real("value").notNull(),
+  minOrderAmount: real("min_order_amount"),
+  maxUses: integer("max_uses"),
+  usedCount: integer("used_count").notNull().default(0),
+  validFrom: text("valid_from"),
+  validUntil: text("valid_until"),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const insertDiscountSchema = createInsertSchema(discounts).omit({ id: true, usedCount: true });
+
+export type Discount = typeof discounts.$inferSelect;
+export type InsertDiscount = z.infer<typeof insertDiscountSchema>;
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });

@@ -2,13 +2,14 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import { eq, desc, or, ilike } from "drizzle-orm";
 import {
-  products, categories, collections, orders, orderItems, settings,
+  products, categories, collections, orders, orderItems, settings, discounts,
   type Product, type InsertProduct,
   type Category, type InsertCategory,
   type Collection, type InsertCollection,
   type Order, type InsertOrder,
   type OrderItem, type InsertOrderItem,
   type Settings,
+  type Discount, type InsertDiscount,
 } from "@shared/schema";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
@@ -41,6 +42,13 @@ export interface IStorage {
 
   getSettings(): Promise<Settings | undefined>;
   updateSettings(data: Partial<Settings>): Promise<Settings>;
+
+  getDiscounts(): Promise<Discount[]>;
+  getDiscountByCode(code: string): Promise<Discount | undefined>;
+  createDiscount(discount: InsertDiscount): Promise<Discount>;
+  updateDiscount(id: number, data: Partial<InsertDiscount>): Promise<Discount | undefined>;
+  deleteDiscount(id: number): Promise<boolean>;
+  incrementDiscountUsage(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -203,5 +211,38 @@ export class DatabaseStorage implements IStorage {
     }
     const [created] = await db.insert(settings).values(payload).returning();
     return created!;
+  }
+
+  async getDiscounts(): Promise<Discount[]> {
+    return db.select().from(discounts).orderBy(desc(discounts.id));
+  }
+
+  async getDiscountByCode(code: string): Promise<Discount | undefined> {
+    const normalized = code.trim().toUpperCase();
+    const [d] = await db.select().from(discounts).where(eq(discounts.code, normalized));
+    return d;
+  }
+
+  async createDiscount(discount: InsertDiscount): Promise<Discount> {
+    const code = (discount.code || "").trim().toUpperCase();
+    const [created] = await db.insert(discounts).values({ ...discount, code }).returning();
+    return created!;
+  }
+
+  async updateDiscount(id: number, data: Partial<InsertDiscount>): Promise<Discount | undefined> {
+    const update = { ...data };
+    if (update.code) (update as any).code = String(update.code).trim().toUpperCase();
+    const [updated] = await db.update(discounts).set(update).where(eq(discounts.id, id)).returning();
+    return updated;
+  }
+
+  async deleteDiscount(id: number): Promise<boolean> {
+    const result = await db.delete(discounts).where(eq(discounts.id, id)).returning({ id: discounts.id });
+    return result.length > 0;
+  }
+
+  async incrementDiscountUsage(id: number): Promise<void> {
+    const [d] = await db.select().from(discounts).where(eq(discounts.id, id));
+    if (d) await db.update(discounts).set({ usedCount: (d.usedCount ?? 0) + 1 }).where(eq(discounts.id, id));
   }
 }

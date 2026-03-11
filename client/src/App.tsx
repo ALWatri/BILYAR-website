@@ -21,6 +21,7 @@ import Collections from "@/pages/admin/Collections";
 import Customers from "@/pages/admin/Customers";
 import Settings from "@/pages/admin/Settings";
 import WhatsApp from "@/pages/admin/WhatsApp";
+import Discounts from "@/pages/admin/Discounts";
 
 function Router() {
   return (
@@ -46,6 +47,7 @@ function Router() {
       <Route path="/admin/collections" component={Collections}/>
       <Route path="/admin/customers" component={Customers}/>
       <Route path="/admin/settings" component={Settings}/>
+      <Route path="/admin/discounts" component={Discounts}/>
       <Route path="/admin/whatsapp" component={WhatsApp}/>
 
       <Route component={NotFound} />

@@ -23,6 +23,10 @@ export default function Checkout() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
+  const [discountInput, setDiscountInput] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState<{ code: string; amount: number } | null>(null);
+  const [discountError, setDiscountError] = useState("");
+  const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -39,7 +43,8 @@ export default function Checkout() {
     return acc + price * item.quantity;
   }, 0);
   const displayShipping = itemCount >= 2 ? 0 : (is5KwdDeliveryArea(form.city) ? 5 : 3);
-  const displayTotal = displaySubtotal + displayShipping;
+  const discountAmount = appliedDiscount?.amount ?? 0;
+  const displayTotal = Math.max(0, displaySubtotal + displayShipping - discountAmount);
 
   useEffect(() => {
     // Restore draft so customers don't lose info after payment redirect/failure.
@@ -101,6 +106,40 @@ export default function Checkout() {
     });
   };
 
+  const handleApplyDiscount = async () => {
+    const code = discountInput.trim().toUpperCase();
+    if (!code) return;
+    setIsValidatingDiscount(true);
+    setDiscountError("");
+    try {
+      const res = await fetch("/api/discounts/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, subtotal: displaySubtotal }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAppliedDiscount({ code: data.discountCode, amount: data.discountAmount });
+        setDiscountInput("");
+        setDiscountError("");
+      } else {
+        setDiscountError(data.message || t.discount_invalid);
+        setAppliedDiscount(null);
+      }
+    } catch {
+      setDiscountError(t.discount_invalid);
+      setAppliedDiscount(null);
+    } finally {
+      setIsValidatingDiscount(false);
+    }
+  };
+
+  const handleRemoveDiscount = () => {
+    setAppliedDiscount(null);
+    setDiscountInput("");
+    setDiscountError("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!acknowledged) return;
@@ -123,6 +162,7 @@ export default function Checkout() {
       }
 
       const orderRes = await apiRequest("POST", "/api/orders", {
+        discountCode: appliedDiscount?.code || undefined,
         customer: {
           name: form.fullName,
           email: form.email,
@@ -443,6 +483,48 @@ export default function Checkout() {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{t.subtotal}</span>
                       <span>{displaySubtotal.toFixed(3)} KWD</span>
+                    </div>
+                    <div className="space-y-2">
+                      {appliedDiscount ? (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">{t.discount} ({appliedDiscount.code})</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-600 font-medium">-{appliedDiscount.amount.toFixed(3)} KWD</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={handleRemoveDiscount}
+                            >
+                              {t.discount_remove}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder={t.discount_code}
+                            value={discountInput}
+                            onChange={(e) => {
+                              setDiscountInput(e.target.value.toUpperCase());
+                              setDiscountError("");
+                            }}
+                            className="rounded-none flex-1 text-sm h-9"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="rounded-none h-9 shrink-0"
+                            onClick={handleApplyDiscount}
+                            disabled={!discountInput.trim() || isValidatingDiscount}
+                          >
+                            {isValidatingDiscount ? "..." : t.discount_apply}
+                          </Button>
+                        </div>
+                      )}
+                      {discountError && <p className="text-xs text-destructive">{discountError}</p>}
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{t.shipping}</span>

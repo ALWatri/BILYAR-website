@@ -46,7 +46,7 @@ export function Footer() {
             <img
               src="/images/bilyar-logo.png"
               alt="BILYAR"
-              className="h-10 w-auto object-contain"
+              className="h-[3.75rem] w-auto object-contain"
             />
             <p className="text-primary-foreground/80 leading-relaxed font-light">
               {t.tagline}
@@ -88,7 +88,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-primary-foreground/10 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-primary-foreground/60 uppercase tracking-wider">
-          <p>&copy; {new Date().getFullYear()} BILYAR Fashion House. {t.rights}</p>
+          <p>&copy; {new Date().getFullYear()} BILYAR Co. for Fashion. {t.rights}</p>
           <div className="flex gap-6 mt-4 md:mt-0">
             <Link href="/privacy" className="hover:text-accent transition-colors">{t.privacy}</Link>
             <Link href="/terms" className="hover:text-accent transition-colors">{t.terms}</Link>
