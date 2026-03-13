@@ -35,10 +35,10 @@ export function verifyInvoiceToken(orderId: number, token: string | undefined): 
   return false;
 }
 
-/** Create a signed invoice URL for the given order (for emails/redirects). */
+/** Create a signed invoice URL for the given order (for emails/redirects). Uses .pdf extension for Twilio compatibility. */
 export function getSignedInvoicePath(orderId: number, baseUrl: string, download = false): string {
   const t = signInvoiceId(orderId);
-  const path = `/api/orders/${orderId}/invoice-pdf?t=${encodeURIComponent(t)}`;
+  const path = `/api/orders/${orderId}/invoice.pdf?t=${encodeURIComponent(t)}`;
   if (download) return `${path}&dl=1`;
   return path;
 }

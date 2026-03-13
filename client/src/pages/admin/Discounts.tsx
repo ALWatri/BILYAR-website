@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AdminLayout } from "./AdminLayout";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { translations } from "@/lib/translations";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -79,24 +79,16 @@ export default function Discounts() {
 
   const createMutation = useMutation({
     mutationFn: async (payload: typeof form) => {
-      const res = await fetch("/api/discounts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: payload.code,
-          type: payload.type,
-          value: Number(payload.value) || 0,
-          minOrderAmount: payload.minOrderAmount ? Number(payload.minOrderAmount) : null,
-          maxUses: payload.maxUses ? Number(payload.maxUses) : null,
-          validFrom: payload.validFrom || null,
-          validUntil: payload.validUntil || null,
-          isActive: payload.isActive ?? true,
-        }),
+      const res = await apiRequest("POST", "/api/discounts", {
+        code: payload.code,
+        type: payload.type,
+        value: Number(payload.value) || 0,
+        minOrderAmount: payload.minOrderAmount ? Number(payload.minOrderAmount) : null,
+        maxUses: payload.maxUses ? Number(payload.maxUses) : null,
+        validFrom: payload.validFrom || null,
+        validUntil: payload.validUntil || null,
+        isActive: payload.isActive ?? true,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Failed to create");
-      }
       return res.json();
     },
     onSuccess: () => {
@@ -111,24 +103,16 @@ export default function Discounts() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, payload }: { id: number; payload: typeof form }) => {
-      const res = await fetch(`/api/discounts/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: payload.code,
-          type: payload.type,
-          value: Number(payload.value) ?? 0,
-          minOrderAmount: payload.minOrderAmount ? Number(payload.minOrderAmount) : null,
-          maxUses: payload.maxUses ? Number(payload.maxUses) : null,
-          validFrom: payload.validFrom || null,
-          validUntil: payload.validUntil || null,
-          isActive: payload.isActive ?? true,
-        }),
+      const res = await apiRequest("PATCH", `/api/discounts/${id}`, {
+        code: payload.code,
+        type: payload.type,
+        value: Number(payload.value) ?? 0,
+        minOrderAmount: payload.minOrderAmount ? Number(payload.minOrderAmount) : null,
+        maxUses: payload.maxUses ? Number(payload.maxUses) : null,
+        validFrom: payload.validFrom || null,
+        validUntil: payload.validUntil || null,
+        isActive: payload.isActive ?? true,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Failed to update");
-      }
       return res.json();
     },
     onSuccess: () => {
@@ -143,8 +127,7 @@ export default function Discounts() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/discounts/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      await apiRequest("DELETE", `/api/discounts/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/discounts"] });

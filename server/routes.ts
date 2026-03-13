@@ -3,6 +3,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import multer from "multer";
 import type { IStorage } from "./storage";
 import { getFirebaseStorageBucket } from "./firebase-init";
@@ -84,6 +85,39 @@ export async function registerRoutes(
 
   ensureUploadsDir();
   app.use("/uploads", express.static(UPLOADS_DIR));
+
+  /** Generate obscure public PDF path: /uploads/invoices/{randomSlug}/OR-{orderNumber}.pdf */
+  function generateObscureInvoicePath(orderNumber: string): { relativePath: string; publicUrl: string } {
+    const slug = crypto.randomBytes(16).toString("base64url");
+    const filename = `OR-${orderNumber}.pdf`;
+    const relativePath = path.join("invoices", slug, filename);
+    return { relativePath, publicUrl: `/uploads/invoices/${encodeURIComponent(slug)}/${encodeURIComponent(filename)}` };
+  }
+
+  /** On payment success: generate PDF, save to obscure path, store URL on order. Used for WhatsApp. */
+  async function ensurePublicInvoicePdf(orderId: number, baseUrl: string): Promise<string | null> {
+    try {
+      const order = await storage.getOrder(orderId);
+      if (!order) return null;
+      const existing = (order as { invoicePublicUrl?: string | null }).invoicePublicUrl;
+      if (existing && existing.startsWith("/uploads/")) return `${baseUrl.replace(/\/$/, "")}${existing}`;
+
+      const settings = await storage.getSettings();
+      const pdf = await generateInvoicePdf(order, settings);
+      const { relativePath, publicUrl } = generateObscureInvoicePath(order.orderNumber);
+      const dir = path.join(UPLOADS_DIR, path.dirname(relativePath));
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(UPLOADS_DIR, relativePath), pdf);
+
+      const fullUrl = `${baseUrl.replace(/\/$/, "")}${publicUrl}`;
+      await storage.updateOrder(orderId, { invoicePublicUrl: fullUrl } as any);
+      console.log(`Invoice public PDF saved: ${fullUrl}`);
+      return fullUrl;
+    } catch (err) {
+      console.error("ensurePublicInvoicePdf error:", err);
+      return null;
+    }
+  }
 
   function isAdminRequest(req: { headers: { cookie?: string; authorization?: string } }): boolean {
     const bearer = req.headers.authorization?.replace(/^Bearer\s+/i, "").trim();
@@ -363,7 +397,7 @@ export async function registerRoutes(
     res.json(order);
   });
 
-  app.get("/api/orders/:id/invoice-pdf", async (req, res) => {
+  const serveInvoicePdf = async (req: any, res: any) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
     const token = typeof req.query.t === "string" ? req.query.t : undefined;
@@ -391,7 +425,10 @@ export async function registerRoutes(
       console.error("Invoice PDF error:", msg, stack || "");
       res.status(500).json({ message: "Failed to generate invoice" });
     }
-  });
+  };
+
+  app.get("/api/orders/:id/invoice.pdf", serveInvoicePdf);
+  app.get("/api/orders/:id/invoice-pdf", serveInvoicePdf);
 
   const cookieName = getAdminSessionCookieName();
   const isProduction = process.env.NODE_ENV === "production";
@@ -1130,6 +1167,8 @@ export async function registerRoutes(
 
     if (isPublicUrl) {
       const invoiceCandidates: string[] = [];
+      const storedPublicUrl = (order as { invoicePublicUrl?: string | null }).invoicePublicUrl;
+      if (storedPublicUrl) invoiceCandidates.push(storedPublicUrl);
       try {
         const settings = await storage.getSettings();
         const pdf = await generateInvoicePdf(order, settings);
@@ -1270,7 +1309,8 @@ export async function registerRoutes(
     if (id == null) return res.status(400).json({ message: "orderId or order number (e.g. ORD-XXX) required" });
     const order = await storage.getOrder(id);
     if (!order) return res.status(404).json({ message: "Order not found" });
-    const baseUrl = SITE_URL || getBaseUrl(req);
+    const baseUrl = (SITE_URL || getBaseUrl(req)).replace(/\/$/, "");
+    await ensurePublicInvoicePdf(id, baseUrl);
     await sendOrderReceivedWhatsApp(id, baseUrl);
     res.json({ sent: true });
   });
@@ -1414,6 +1454,7 @@ export async function registerRoutes(
             await storage.updateOrder(id, { inventoryAdjusted: true } as any);
           }
           await applyDiscountUsageIfAny(id);
+          await ensurePublicInvoicePdf(id, baseUrl);
           sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
           return res.redirect(`${baseUrl}/order/success?orderId=${orderId}&t=${encodeURIComponent(signInvoiceId(id))}`);
         }
@@ -1442,6 +1483,7 @@ export async function registerRoutes(
       try {
         const order = await storage.getOrder(orderId);
         if (order && order.paymentStatus !== "paid") {
+          const baseUrl = (process.env.SITE_URL || "").replace(/\/$/, "") || "https://www.bilyarofficial.com";
           await storage.updateOrderPayment(orderId, chargeId, "paid");
           await storage.updateOrderStatus(orderId, "Paid");
           if (!(order as any).inventoryAdjusted) {
@@ -1449,6 +1491,8 @@ export async function registerRoutes(
             await storage.updateOrder(orderId, { inventoryAdjusted: true } as any);
           }
           await applyDiscountUsageIfAny(orderId);
+          await ensurePublicInvoicePdf(orderId, baseUrl);
+          sendOrderReceivedWhatsApp(orderId, baseUrl).catch((err) => console.error("WhatsApp order_received (webhook):", err));
         }
       } catch (e) {
         console.error("Tap webhook error:", e);
@@ -1550,6 +1594,7 @@ export async function registerRoutes(
       await storage.updateOrder(id, { inventoryAdjusted: true } as any);
     }
     await applyDiscountUsageIfAny(id);
+    await ensurePublicInvoicePdf(id, baseUrl);
     sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
     return res.redirect(`${baseUrl}/order/success?orderId=${orderId}&t=${encodeURIComponent(signInvoiceId(id))}`);
   });
@@ -1576,6 +1621,7 @@ export async function registerRoutes(
 
       if (order) {
         if (status.toLowerCase() === "captured") {
+          const baseUrl = (process.env.SITE_URL || "").replace(/\/$/, "") || "https://www.bilyarofficial.com";
           await storage.updateOrderPayment(order.id, orderRef || "", "paid");
           await storage.updateOrderStatus(order.id, "Paid");
           if (!(order as any).inventoryAdjusted) {
@@ -1583,6 +1629,8 @@ export async function registerRoutes(
             await storage.updateOrder(order.id, { inventoryAdjusted: true } as any);
           }
           await applyDiscountUsageIfAny(order.id);
+          await ensurePublicInvoicePdf(order.id, baseUrl);
+          sendOrderReceivedWhatsApp(order.id, baseUrl).catch((err) => console.error("WhatsApp order_received (Deema webhook):", err));
           console.log(`Deema webhook: Order ${order.id} payment captured`);
         } else if (status.toLowerCase() === "expired" || status.toLowerCase() === "cancelled") {
           // Don't overwrite if we already marked as paid (e.g. from callback) so successful payments aren't flipped to failed

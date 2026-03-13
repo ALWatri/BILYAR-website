@@ -27,11 +27,12 @@ export default function Dashboard() {
   const t = translations[lang].admin;
 
   const paidStatuses = ["Paid", "Processing", "Shipped", "Delivered"];
-  const totalRevenue = orders.filter((o) => paidStatuses.includes(o.status)).reduce((acc, order) => acc + order.total, 0);
-  const totalOrders = orders.length;
+  const paidOrders = orders.filter((o) => paidStatuses.includes(o.status));
+  const totalRevenue = paidOrders.reduce((acc, order) => acc + order.total, 0);
+  const totalOrders = paidOrders.length;
   const pendingOrders = orders.filter((o) => o.status === "Pending").length;
   const uniqueCustomers = new Set(orders.map((o) => o.customerEmail.toLowerCase())).size;
-  const recentPaidOrders = orders.filter((o) => paidStatuses.includes(o.status)).slice(0, 10);
+  const recentPaidOrders = paidOrders.slice(0, 10);
   const recentRevenue = recentPaidOrders.reduce((acc, o) => acc + o.total, 0);
 
   const stats = [
@@ -114,7 +115,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-8">
-              {orders.slice(0, 5).map((order) => (
+              {paidOrders.slice(0, 5).map((order) => (
                 <div key={order.id} className="flex items-center">
                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
                       {order.customerName.charAt(0)}

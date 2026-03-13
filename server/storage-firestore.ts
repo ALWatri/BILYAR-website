@@ -105,6 +105,7 @@ function toOrder(doc: DocumentSnapshot): Order {
     shippingCost: d.shippingCost ?? 0,
     discountCode: d.discountCode ?? null,
     discountAmount: d.discountAmount ?? null,
+    invoicePublicUrl: (d as Record<string, unknown>).invoicePublicUrl ?? null,
     createdAt: d.createdAt ?? new Date().toISOString().slice(0, 10),
   };
 }

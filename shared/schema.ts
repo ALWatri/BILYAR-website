@@ -65,6 +65,7 @@ export const orders = pgTable("orders", {
   shippingCost: real("shipping_cost").notNull().default(0),
   discountCode: text("discount_code"),
   discountAmount: real("discount_amount"),
+  invoicePublicUrl: text("invoice_public_url"), // Obscure public PDF URL for WhatsApp (e.g. /uploads/invoices/abc123/OR-ORD-XYZ.pdf)
   createdAt: text("created_at").notNull().default(sql`to_char(now(), 'YYYY-MM-DD')`),
 });
 
