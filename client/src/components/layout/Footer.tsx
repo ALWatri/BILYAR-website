@@ -94,9 +94,20 @@ export function Footer() {
             <Link href="/terms" className="hover:text-accent transition-colors">{t.terms}</Link>
           </div>
         </div>
-        <p className="mt-4 text-xs text-primary-foreground/50 uppercase tracking-wider text-center">
-          {t.payment_methods}
-        </p>
+        <div className="mt-4 flex justify-center items-center gap-4" aria-label="Payment methods: KNET, Visa, Mastercard, Deema">
+          <img src="/images/knet-logo.png" alt="KNET" className="h-6 w-auto object-contain opacity-90" />
+          <svg viewBox="0 0 50 32" className="h-6 w-auto opacity-90" aria-hidden="true">
+            <rect width="50" height="32" rx="4" fill="#1A1F71"/>
+            <text x="25" y="21" textAnchor="middle" fill="#F7B600" fontSize="14" fontWeight="bold" fontFamily="Arial,sans-serif" fontStyle="italic">VISA</text>
+          </svg>
+          <svg viewBox="0 0 50 32" className="h-6 w-auto opacity-90" aria-hidden="true">
+            <rect width="50" height="32" rx="4" fill="#000000"/>
+            <circle cx="20" cy="16" r="10" fill="#EB001B"/>
+            <circle cx="30" cy="16" r="10" fill="#F79E1B"/>
+            <path d="M25 8a10 10 0 0 1 0 16 10 10 0 0 1 0-16z" fill="#FF5F00"/>
+          </svg>
+          <img src="/images/deema-logo.png" alt="Deema" className="h-6 w-auto object-contain opacity-90" />
+        </div>
       </div>
     </footer>
   );
