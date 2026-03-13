@@ -848,6 +848,32 @@ export async function registerRoutes(
     }
   }
 
+  /** Confirm zero-amount order (100% discount / free item). Skips payment gateway, marks as Paid. */
+  app.post("/api/orders/:id/confirm-zero", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
+      const order = await storage.getOrder(id);
+      if (!order) return res.status(404).json({ message: "Order not found" });
+      if (order.status !== "Pending") return res.status(400).json({ message: "Order already processed" });
+      if (order.total > 0.001) return res.status(400).json({ message: "Order total must be zero to confirm without payment" });
+
+      await storage.updateOrderPayment(id, "zero-amount", "paid");
+      await storage.updateOrderStatus(id, "Paid");
+      const existing = order;
+      if (!(existing as any).inventoryAdjusted) {
+        await adjustInventoryForOrder(id, -1);
+        await storage.updateOrder(id, { inventoryAdjusted: true } as any);
+      }
+      await applyDiscountUsageIfAny(id);
+      sendAdminOrderNotification(id).catch((err) => console.error("Admin order email:", err));
+      res.json({ confirmed: true, invoiceToken: signInvoiceId(id) });
+    } catch (error: any) {
+      console.error("Confirm zero error:", error);
+      res.status(500).json({ message: error.message || "Failed to confirm order" });
+    }
+  });
+
   app.delete("/api/orders/:id", requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });

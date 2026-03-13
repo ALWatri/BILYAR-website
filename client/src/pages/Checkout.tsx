@@ -192,6 +192,30 @@ export default function Checkout() {
 
       const order = await orderRes.json();
 
+      // Zero-amount orders (100% discount / free item): skip payment gateway, confirm immediately
+      if (displayTotal <= 0) {
+        const confirmRes = await fetch(`/api/orders/${order.id}/confirm-zero`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
+        let confirmData: { confirmed?: boolean; invoiceToken?: string; message?: string } = {};
+        try {
+          confirmData = await confirmRes.json();
+        } catch {
+          // Non-JSON response
+        }
+        if (confirmRes.ok && confirmData.confirmed) {
+          try { localStorage.removeItem(CHECKOUT_DRAFT_KEY); } catch {}
+          clearCart();
+          const t = confirmData.invoiceToken ? `&t=${encodeURIComponent(confirmData.invoiceToken)}` : "";
+          navigate(`/order/success?orderId=${order.id}${t}`);
+        } else {
+          setError(translateError(confirmData.message || "Failed to confirm order", lang));
+        }
+        return;
+      }
+
       const paymentEndpoint = paymentMethod === "tap"
         ? "/api/payment/tap/initiate"
         : "/api/payment/deema/initiate";
