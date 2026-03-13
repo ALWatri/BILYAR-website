@@ -5,6 +5,7 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import multer from "multer";
+import PDFDocument from "pdfkit";
 import type { IStorage } from "./storage";
 import { getFirebaseStorageBucket } from "./firebase-init";
 import { translateToEnglish } from "./translate";
@@ -85,6 +86,35 @@ export async function registerRoutes(
 
   ensureUploadsDir();
   app.use("/uploads", express.static(UPLOADS_DIR));
+
+  // Public sample PDF for Twilio template media validation. Must return application/pdf.
+  // Path under /api/ avoids SPA/static catch-all returning HTML.
+  app.get("/api/sample-invoice.pdf", async (_req, res) => {
+    try {
+      const doc = new PDFDocument({ size: "A4", margin: 48 });
+      const chunks: Buffer[] = [];
+      doc.on("data", (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
+      doc.on("end", () => {
+        const pdf = Buffer.concat(chunks);
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Cache-Control", "public, max-age=3600");
+        res.setHeader("Content-Disposition", `inline; filename="sample-invoice.pdf"`);
+        res.send(pdf);
+      });
+
+      doc.fontSize(18).text("BILYAR - Sample Invoice", { align: "center" });
+      doc.moveDown(1);
+      doc.fontSize(12).text("This is a sample PDF used for WhatsApp template approval.", { align: "left" });
+      doc.moveDown(0.5);
+      doc.text("It is not a real customer invoice.");
+      doc.moveDown(1);
+      doc.text(`Generated at: ${new Date().toISOString()}`);
+      doc.end();
+    } catch (err) {
+      console.error("sample-invoice.pdf error:", err);
+      res.status(500).send("Failed to generate sample PDF");
+    }
+  });
 
   /** Generate obscure public PDF path: /uploads/invoices/{randomSlug}/OR-{orderNumber}.pdf */
   function generateObscureInvoicePath(orderNumber: string): { relativePath: string; publicUrl: string } {
