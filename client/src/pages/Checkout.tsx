@@ -400,18 +400,11 @@ export default function Checkout() {
                       <p className="font-medium">{t.card_payment}</p>
                       <p className="text-sm text-muted-foreground mt-0.5">{t.card_desc}</p>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <svg viewBox="0 0 50 32" className="h-8 w-auto" aria-label="Visa">
-                        <rect width="50" height="32" rx="4" fill="#1A1F71"/>
-                        <text x="25" y="21" textAnchor="middle" fill="#F7B600" fontSize="14" fontWeight="bold" fontFamily="Arial, sans-serif" fontStyle="italic">VISA</text>
-                      </svg>
-                      <svg viewBox="0 0 50 32" className="h-8 w-auto" aria-label="Mastercard">
-                        <rect width="50" height="32" rx="4" fill="#000000"/>
-                        <circle cx="20" cy="16" r="10" fill="#EB001B"/>
-                        <circle cx="30" cy="16" r="10" fill="#F79E1B"/>
-                        <path d="M25 8a10 10 0 0 1 0 16 10 10 0 0 1 0-16z" fill="#FF5F00"/>
-                      </svg>
-                      <img src="/images/knet-logo.png" alt="KNET Kuwait" className="h-8 w-auto object-contain" />
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <img src="/images/knet-logo.png" alt="KNET" className="h-8 w-12 object-contain object-center" />
+                      <img src="/images/visa.svg" alt="Visa" className="h-8 w-12 object-contain object-center" />
+                      <img src="/images/mastercard.svg" alt="Mastercard" className="h-8 w-12 object-contain object-center" />
+                      <img src="/images/applepay.svg" alt="Apple Pay" className="h-8 w-12 object-contain object-center" />
                     </div>
                   </button>
 
@@ -437,7 +430,7 @@ export default function Checkout() {
                       <p className="text-sm text-muted-foreground mt-0.5">{t.installments_desc}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <img src="/images/deema-logo.png" alt="Deema" className="h-8 w-auto object-contain" />
+                      <img src="/images/deema-logo.png" alt="Deema" className="h-8 w-12 object-contain object-center" />
                     </div>
                   </button>
                 </div>

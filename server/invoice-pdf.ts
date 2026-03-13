@@ -287,12 +287,13 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     // Thank you — fixed position
     doc.fontSize(18).fillColor(INK).font("Helvetica-Oblique").text("We are honoured by your trust.", contentLeft, footerThanksY, { align: "center", width: contentWidth });
 
-    // Payment logos — KNET, Visa, Mastercard, Deema (uniform 38×25 box, aspect preserved)
-    const logoW = 38;
-    const logoH = 25;
-    const logoGap = 12;
+    // Payment logos — KNET, Visa, Mastercard, Apple Pay, Deema (uniform 34×22 box, aspect preserved)
+    const logoW = 34;
+    const logoH = 22;
+    const logoGap = 10;
+    const numLogos = 5;
     const logosStartY = footerThanksY + 28;
-    const totalLogosW = 4 * logoW + 3 * logoGap;
+    const totalLogosW = numLogos * logoW + (numLogos - 1) * logoGap;
     let logoX = contentLeft + (contentWidth - totalLogosW) / 2;
     const knetPath = getImagePath("knet-logo.png");
     const deemaPath = getImagePath("deema-logo.png");
@@ -300,12 +301,15 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
       doc.image(knetPath, logoX, logosStartY, { fit: [logoW, logoH], align: "center", valign: "center" } as any);
       logoX += logoW + logoGap;
     }
-    doc.rect(logoX, logosStartY, logoW, logoH).fill("#1A1F71");
-    doc.fontSize(10).fillColor("#F7B600").font("Helvetica-BoldOblique").text("VISA", logoX, logosStartY + 10, { width: logoW, align: "center" });
+    doc.rect(logoX, logosStartY, logoW, logoH).fill("#0E4595");
+    doc.fontSize(8).fillColor("#FFFFFF").font("Helvetica-Bold").text("VISA", logoX, logosStartY + 8, { width: logoW, align: "center" });
     logoX += logoW + logoGap;
     doc.rect(logoX, logosStartY, logoW, logoH).fill("#000000");
-    doc.circle(logoX + 12, logosStartY + logoH / 2, 6).fill("#EB001B");
-    doc.circle(logoX + 26, logosStartY + logoH / 2, 6).fill("#F79E1B");
+    doc.circle(logoX + 10, logosStartY + logoH / 2, 5).fill("#EB001B");
+    doc.circle(logoX + 24, logosStartY + logoH / 2, 5).fill("#F79E1B");
+    logoX += logoW + logoGap;
+    doc.roundedRect(logoX, logosStartY, logoW, logoH, 3).fill("#000000");
+    doc.fontSize(7).fillColor("#FFFFFF").font("Helvetica").text("Apple Pay", logoX, logosStartY + 8, { width: logoW, align: "center" });
     logoX += logoW + logoGap;
     if (deemaPath) {
       doc.image(deemaPath, logoX, logosStartY, { fit: [logoW, logoH], align: "center", valign: "center" } as any);

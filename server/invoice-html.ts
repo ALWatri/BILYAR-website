@@ -173,8 +173,9 @@ ${discountAmount > 0 ? `<div class="row"><span>Discount${discountCode ? ` (${esc
 <p class="thanks">We are honoured by your trust.</p>
 <div class="payment-logos">
   <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/knet-logo.png" alt="KNET" class="payment-logo"/></div>
-  <div class="payment-logo-wrap"><svg viewBox="0 0 50 32" class="payment-logo" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect width="50" height="32" rx="4" fill="#1A1F71"/><text x="25" y="21" text-anchor="middle" fill="#F7B600" font-size="14" font-weight="bold" font-family="Arial,sans-serif" font-style="italic">VISA</text></svg></div>
-  <div class="payment-logo-wrap"><svg viewBox="0 0 50 32" class="payment-logo" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect width="50" height="32" rx="4" fill="#000"/><circle cx="20" cy="16" r="10" fill="#EB001B"/><circle cx="30" cy="16" r="10" fill="#F79E1B"/><path d="M25 8a10 10 0 0 1 0 16 10 10 0 0 1 0-16z" fill="#FF5F00"/></svg></div>
+  <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/visa.svg" alt="Visa" class="payment-logo"/></div>
+  <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/mastercard.svg" alt="Mastercard" class="payment-logo"/></div>
+  <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/applepay.svg" alt="Apple Pay" class="payment-logo"/></div>
   <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/deema-logo.png" alt="Deema" class="payment-logo"/></div>
 </div>
 <footer class="contact-footer">${siteDisplay} • ${storePhone} • ${storeEmail}</footer>
