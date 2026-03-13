@@ -95,11 +95,11 @@ export function Footer() {
           </div>
         </div>
         <div className="mt-4 flex justify-center items-center gap-4" aria-label="Payment methods: KNET, Visa, Mastercard, Apple Pay, Deema">
-          <img src="/images/knet-logo.png" alt="KNET" className="h-6 w-10 object-contain object-center opacity-90" />
-          <img src="/images/visa.svg" alt="Visa" className="h-6 w-10 object-contain object-center opacity-90" />
-          <img src="/images/mastercard.svg" alt="Mastercard" className="h-6 w-10 object-contain object-center opacity-90" />
-          <img src="/images/applepay.svg" alt="Apple Pay" className="h-6 w-10 object-contain object-center opacity-90" />
-          <img src="/images/deema-logo.png" alt="Deema" className="h-6 w-10 object-contain object-center opacity-90" />
+          <img src="/images/knet.svg" alt="KNET" className="h-7 w-7 object-contain opacity-90" />
+          <img src="/images/visa.svg" alt="Visa" className="h-7 w-7 object-contain opacity-90" />
+          <img src="/images/mastercard.svg" alt="Mastercard" className="h-7 w-7 object-contain opacity-90" />
+          <img src="/images/applepay.svg" alt="Apple Pay" className="h-7 w-7 object-contain opacity-90" />
+          <img src="/images/deema.svg" alt="Deema" className="h-7 w-7 object-contain opacity-90" />
         </div>
       </div>
     </footer>

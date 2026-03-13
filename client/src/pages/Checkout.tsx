@@ -400,11 +400,11 @@ export default function Checkout() {
                       <p className="font-medium">{t.card_payment}</p>
                       <p className="text-sm text-muted-foreground mt-0.5">{t.card_desc}</p>
                     </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <img src="/images/knet-logo.png" alt="KNET" className="h-8 w-12 object-contain object-center" />
-                      <img src="/images/visa.svg" alt="Visa" className="h-8 w-12 object-contain object-center" />
-                      <img src="/images/mastercard.svg" alt="Mastercard" className="h-8 w-12 object-contain object-center" />
-                      <img src="/images/applepay.svg" alt="Apple Pay" className="h-8 w-12 object-contain object-center" />
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <img src="/images/knet.svg" alt="KNET" className="h-9 w-9 object-contain" />
+                      <img src="/images/visa.svg" alt="Visa" className="h-9 w-9 object-contain" />
+                      <img src="/images/mastercard.svg" alt="Mastercard" className="h-9 w-9 object-contain" />
+                      <img src="/images/applepay.svg" alt="Apple Pay" className="h-9 w-9 object-contain" />
                     </div>
                   </button>
 
@@ -430,7 +430,7 @@ export default function Checkout() {
                       <p className="text-sm text-muted-foreground mt-0.5">{t.installments_desc}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <img src="/images/deema-logo.png" alt="Deema" className="h-8 w-12 object-contain object-center" />
+                      <img src="/images/deema.svg" alt="Deema" className="h-9 w-9 object-contain" />
                     </div>
                   </button>
                 </div>

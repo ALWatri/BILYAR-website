@@ -117,9 +117,9 @@ tbody td.num{text-align:right}
 .divider{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:24px 0;opacity:.6}
 .thanks{font-family:Caveat,sans-serif;font-size:28px;color:var(--ink);text-align:center;margin:0}
 .footer-spacer{flex:1;min-height:40px}
-.payment-logos{display:flex;justify-content:center;align-items:center;gap:20px;margin-top:20px;flex-wrap:wrap}
-.payment-logo-wrap{width:42px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.payment-logo{max-width:100%;max-height:100%;object-fit:contain;object-position:center}
+.payment-logos{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:20px;flex-wrap:wrap}
+.payment-logo-wrap{width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.payment-logo{width:100%;height:100%;object-fit:contain}
 .contact-footer{font-size:11px;color:var(--muted);text-align:center;letter-spacing:.08em;padding-top:16px}
 </style>
 </head>
@@ -172,11 +172,11 @@ ${discountAmount > 0 ? `<div class="row"><span>Discount${discountCode ? ` (${esc
 <div class="divider"></div>
 <p class="thanks">We are honoured by your trust.</p>
 <div class="payment-logos">
-  <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/knet-logo.png" alt="KNET" class="payment-logo"/></div>
+  <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/knet.svg" alt="KNET" class="payment-logo"/></div>
   <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/visa.svg" alt="Visa" class="payment-logo"/></div>
   <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/mastercard.svg" alt="Mastercard" class="payment-logo"/></div>
   <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/applepay.svg" alt="Apple Pay" class="payment-logo"/></div>
-  <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/deema-logo.png" alt="Deema" class="payment-logo"/></div>
+  <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/deema.svg" alt="Deema" class="payment-logo"/></div>
 </div>
 <footer class="contact-footer">${siteDisplay} • ${storePhone} • ${storeEmail}</footer>
 </div>
