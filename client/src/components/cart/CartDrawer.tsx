@@ -91,7 +91,7 @@ export function CartDrawer() {
                             <Plus className="h-3 w-3" />
                           </button>
                         </div>
-                        <p className="font-medium whitespace-nowrap">{lineTotal.toFixed(3)} KWD</p>
+                        <p className="font-medium whitespace-nowrap">{lineTotal.toFixed(3)} {translations[lang].currency}</p>
                       </div>
                     </div>
                   </div>
@@ -106,7 +106,7 @@ export function CartDrawer() {
             <div className="w-full space-y-4">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t.subtotal}</span>
-                <span>{subtotal} KWD</span>
+                <span>{subtotal} {translations[lang].currency}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t.shipping}</span>
@@ -114,7 +114,7 @@ export function CartDrawer() {
               </div>
               <div className="flex justify-between text-lg font-serif font-medium pt-4 border-t border-border">
                 <span>{t.total}</span>
-                <span>{total} KWD</span>
+                <span>{total} {translations[lang].currency}</span>
               </div>
               <SheetClose asChild>
                 <Button

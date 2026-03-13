@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { AdminLayout } from "./AdminLayout";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { translations } from "@/lib/translations";
+import { translations, translateError } from "@/lib/translations";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -98,7 +98,7 @@ export default function Discounts() {
       setForm(emptyForm());
       toast({ title: "Discount created" });
     },
-    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: translateError(e.message, lang), variant: "destructive" }),
   });
 
   const updateMutation = useMutation({
@@ -122,7 +122,7 @@ export default function Discounts() {
       setForm(emptyForm());
       toast({ title: "Discount updated" });
     },
-    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: translateError(e.message, lang), variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -134,7 +134,7 @@ export default function Discounts() {
       setDeleteTarget(null);
       toast({ title: "Discount deleted" });
     },
-    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: translateError(e.message, lang), variant: "destructive" }),
   });
 
   const openAdd = () => {
@@ -161,7 +161,7 @@ export default function Discounts() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.code?.trim()) {
-      toast({ title: "Code is required", variant: "destructive" });
+      toast({ title: translateError("Code is required", lang), variant: "destructive" });
       return;
     }
     if (editing) updateMutation.mutate({ id: editing.id, payload: form });
@@ -170,7 +170,7 @@ export default function Discounts() {
 
   const formatDiscount = (d: Discount) => {
     if (d.type === "percentage") return `${d.value}%`;
-    return `${d.value.toFixed(3)} KWD`;
+    return `${d.value.toFixed(3)} ${translations[lang].currency}`;
   };
 
   return (
@@ -216,7 +216,7 @@ export default function Discounts() {
                   </span>
                 </TableCell>
                 <TableCell>{formatDiscount(d)}</TableCell>
-                <TableCell>{d.minOrderAmount != null ? `${d.minOrderAmount} KWD` : "—"}</TableCell>
+                <TableCell>{d.minOrderAmount != null ? `${d.minOrderAmount} ${translations[lang].currency}` : "—"}</TableCell>
                 <TableCell>{d.usedCount} / {d.maxUses ?? "∞"}</TableCell>
                 <TableCell>{d.isActive ? (isRtl ? "نعم" : "Yes") : (isRtl ? "لا" : "No")}</TableCell>
                 <TableCell className={cn("text-right", isRtl && "text-left")}>
@@ -260,7 +260,7 @@ export default function Discounts() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label>{t.discount_value} {form.type === "percentage" ? "(%)" : "(KWD)"}</Label>
+                <Label>{t.discount_value} {form.type === "percentage" ? "(%)" : `(${translations[lang].currency})`}</Label>
                 <Input
                   type="number"
                   step={form.type === "percentage" ? 1 : 0.001}

@@ -106,7 +106,7 @@ const seedProducts = [
     images: ["/images/prod-8.jpg"],
     isNew: false,
     description: "Deep claret set with unique butterfly-inspired appliqués. A modern take on traditional silhouettes for the confident BILYAR woman.",
-    descriptionAr: "طقم بلون العناب العميق مع زينة فريدة مستوحاة من الفراشة. رؤية حديثة للقصات التقليدية لامرأة بيليار الواثقة.",
+    descriptionAr: "طقم بلون العناب العميق مع زينة فريدة مستوحاة من الفراشة. رؤية حديثة للقصات التقليدية لامرأة بليار الواثقة.",
     hasShirt: true,
     hasTrouser: true,
   },

@@ -1,5 +1,63 @@
+export type Lang = "en" | "ar";
+
+/** Maps common API/client error messages to translation keys */
+const ERROR_KEY_MAP: Record<string, string> = {
+  "Admin authentication required": "admin_required",
+  "No images uploaded": "no_images",
+  "Invalid product ID": "invalid_product_id",
+  "Product not found": "product_not_found",
+  "Validation error": "validation_error",
+  "Email service is not configured": "email_not_configured",
+  "Failed to send message": "failed_send_message",
+  "Category not found": "category_not_found",
+  "Invalid category ID": "invalid_category_id",
+  "Collection not found": "collection_not_found",
+  "Invalid collection ID": "invalid_collection_id",
+  "Order not found": "order_not_found",
+  "Invalid order ID": "invalid_order_id",
+  "Invalid or missing invoice access token": "invoice_token_invalid",
+  "Failed to generate invoice": "failed_generate_invoice",
+  "Invalid credentials": "invalid_credentials",
+  "Invalid status": "invalid_status",
+  "Customer not found": "customer_not_found",
+  "Customer id required": "customer_id_required",
+  "Phone number required (8 digits)": "phone_required",
+  "Invalid subtotal": "invalid_subtotal",
+  "Invalid or expired discount code": "discount_invalid_expired",
+  "Validation failed": "validation_failed",
+  "A discount with this code already exists": "discount_code_exists",
+  "Invalid discount ID": "invalid_discount_id",
+  "Discount not found": "discount_not_found",
+  "WhatsApp not configured": "whatsapp_not_configured",
+  "Invalid input": "invalid_input",
+  "orderId or order number (e.g. ORD-XXX) required": "order_id_required",
+  "Customer name is required": "customer_name_required",
+  "Customer email is required": "customer_email_required",
+  "Customer phone is required": "customer_phone_required",
+  "Customer phone must be a valid Kuwait number": "customer_phone_kuwait",
+  "Payment initiation failed": "payment_initiation_failed",
+  "Payment service error": "payment_service_error",
+  "Failed to create": "failed_to_create",
+  "Failed to update": "failed_to_update",
+  "Failed to delete": "failed_to_delete",
+  "Failed to create order": "failed_create_order",
+  "Failed to update order": "failed_update_order",
+  "Failed to save": "failed_save",
+  "Failed to save settings": "failed_save_settings",
+  "Upload failed": "upload_failed",
+  "At least one image URL required": "image_required",
+  "At least one image required": "image_required_short",
+  "Code is required": "code_required",
+  "Select recipients and enter a message": "select_recipients_message",
+  "Something went wrong. Please try again.": "something_wrong",
+  "Please log in again to view the invoice.": "login_again_invoice",
+  "Could not open invoice": "cannot_open_invoice",
+  "At least one item is required.": "item_required",
+};
+
 export const translations = {
   en: {
+    currency: "KWD",
     nav: {
       home: "Home",
       shop: "Shop",
@@ -23,7 +81,8 @@ export const translations = {
       contact: "Contact",
       rights: "All rights reserved.",
       privacy: "Privacy Policy",
-      terms: "Terms of Service"
+      terms: "Terms of Service",
+      payment_methods: "KNET · VISA · MASTERCARD · DEEMA (Kuwait BNPL)"
     },
     home: {
       hero: "Luxury, Tailored for Presence.",
@@ -42,7 +101,11 @@ export const translations = {
       title: "The Collection",
       subtitle: "Explore our latest arrivals, featuring timeless silhouettes and modern luxury.",
       sort: "Sort By",
+      sort_newest: "Newest Arrivals",
+      sort_price_asc: "Price: Low to High",
+      sort_price_desc: "Price: High to Low",
       filter: "Filters",
+      filter_all: "All",
       search: "Search products...",
       search_no_results: "No products match your search."
     },
@@ -278,14 +341,69 @@ export const translations = {
       continue_shopping: "Continue Shopping",
       try_again: "Try Again",
       download_invoice: "Download invoice PDF"
+    },
+    errors: {
+      admin_required: "Admin authentication required",
+      no_images: "No images uploaded",
+      invalid_product_id: "Invalid product ID",
+      product_not_found: "Product not found",
+      validation_error: "Validation error",
+      email_not_configured: "Email service is not configured",
+      failed_send_message: "Failed to send message",
+      category_not_found: "Category not found",
+      invalid_category_id: "Invalid category ID",
+      collection_not_found: "Collection not found",
+      invalid_collection_id: "Invalid collection ID",
+      order_not_found: "Order not found",
+      invalid_order_id: "Invalid order ID",
+      invoice_token_invalid: "Invalid or missing invoice access token",
+      failed_generate_invoice: "Failed to generate invoice",
+      invalid_credentials: "Invalid credentials",
+      invalid_status: "Invalid status",
+      customer_not_found: "Customer not found",
+      customer_id_required: "Customer id required",
+      phone_required: "Phone number required (8 digits)",
+      invalid_subtotal: "Invalid subtotal",
+      discount_invalid_expired: "Invalid or expired discount code",
+      validation_failed: "Validation failed",
+      discount_code_exists: "A discount with this code already exists",
+      invalid_discount_id: "Invalid discount ID",
+      discount_not_found: "Discount not found",
+      whatsapp_not_configured: "WhatsApp not configured",
+      invalid_input: "Invalid input",
+      order_id_required: "orderId or order number (e.g. ORD-XXX) required",
+      customer_name_required: "Customer name is required",
+      customer_email_required: "Customer email is required",
+      customer_phone_required: "Customer phone is required",
+      customer_phone_kuwait: "Customer phone must be a valid Kuwait number (8 digits). Please update the phone number and try again.",
+      payment_initiation_failed: "Payment initiation failed",
+      payment_service_error: "Payment service error",
+      failed_to_create: "Failed to create",
+      failed_to_update: "Failed to update",
+      failed_to_delete: "Failed to delete",
+      failed_create_order: "Failed to create order",
+      failed_update_order: "Failed to update order",
+      failed_save: "Failed to save",
+      failed_save_settings: "Failed to save settings",
+      upload_failed: "Upload failed",
+      image_required: "At least one image URL required",
+      image_required_short: "At least one image required",
+      code_required: "Code is required",
+      select_recipients_message: "Select recipients and enter a message",
+      something_wrong: "Something went wrong. Please try again.",
+      login_again_invoice: "Please log in again to view the invoice.",
+      cannot_open_invoice: "Could not open invoice",
+      item_required: "At least one item is required.",
+      failed_to_save: "Failed to save",
     }
   },
   ar: {
+    currency: "د.ك",
     nav: {
       home: "الرئيسية",
       shop: "المتجر",
       collections: "المجموعات",
-      about: "عن بيليار",
+      about: "عن بليار",
       contact: "اتصل بنا"
     },
     footer: {
@@ -298,13 +416,14 @@ export const translations = {
       outerwear: "ملابس خارجية",
       accessories: "إكسسوارات",
       story: "قصتنا",
-      read_story: "اقرئي قصتنا",
+      read_story: "عن بليار",
       sustainability: "الاستدامة",
       careers: "وظائف",
       contact: "اتصل بنا",
       rights: "جميع الحقوق محفوظة.",
       privacy: "سياسة الخصوصية",
-      terms: "شروط الخدمة"
+      terms: "شروط الخدمة",
+      payment_methods: "كي نت · فيزا · ماستركارد · ديما (التقسيط الكويتي)"
     },
     home: {
       hero: "فخامة، صُممت لتمنحكِ حضوراً.",
@@ -316,14 +435,18 @@ export const translations = {
       most_desired: "الأكثر رغبة",
       view_all: "عرض الكل",
       heritage_quote: "\"الأناقة ليست في لفت الأنظار، بل في أن تبقى في الذاكرة.\"",
-      heritage_desc: "ولدت بيليار من الرغبة في دمج الحرفية الراقية مع التنوع العصري. تم تصميم كل قطعة في مشغلنا بباريس، باستخدام أجود الأقمشة المستدامة لضمان بقاء حضورك لفترة طويلة بعد مغادرتك الغرفة.",
-      read_story: "اقرئي قصتنا"
+      heritage_desc: "ولدت بليار من الرغبة في دمج الحرفية الراقية مع التنوع العصري. تم تصميم كل قطعة في مشغلنا بباريس، باستخدام أجود الأقمشة المستدامة لضمان بقاء حضورك لفترة طويلة بعد مغادرتك الغرفة.",
+      read_story: "عن بليار"
     },
     shop: {
       title: "المجموعة",
       subtitle: "اكتشفي أحدث مجموعاتنا، التي تتميز بقصات خالدة وفخامة عصرية.",
       sort: "فرز حسب",
+      sort_newest: "الأحدث",
+      sort_price_asc: "السعر: من الأقل إلى الأعلى",
+      sort_price_desc: "السعر: من الأعلى إلى الأقل",
       filter: "تصفية",
+      filter_all: "الكل",
       search: "البحث في المنتجات...",
       search_no_results: "لا توجد منتجات تطابق البحث."
     },
@@ -368,7 +491,7 @@ export const translations = {
     },
     static: {
       heritage_title: "تراثنا",
-      heritage_p1: "تأسست بيليار بناءً على الإيمان بأن الفخامة الحقيقية تكمن في التفاصيل. كل غرزة، كل طية، وكل اختيار للقماش هو شهادة على التزامنا بالتميز.",
+      heritage_p1: "تأسست بليار بناءً على الإيمان بأن الفخامة الحقيقية تكمن في التفاصيل. كل غرزة، كل طية، وكل اختيار للقماش هو شهادة على التزامنا بالتميز.",
       heritage_p2: "مجموعاتنا مصممة للمرأة التي تفرض حضورها في المكان دون أن تنطق بكلمة واحدة. إنها قوية، متطورة، وواثقة بنفسها. نحن نستمد أجود المواد من جميع أنحاء العالم - الحرير الإيطالي، الدانتيل الفرنسي، والكشمير المستدام - لابتكار قطع لا تبدو رائعة فحسب، بل تمنحك شعوراً استثنائياً.",
       contact_title: "اتصل بنا",
       contact_desc: "",
@@ -559,6 +682,76 @@ export const translations = {
       continue_shopping: "متابعة التسوق",
       try_again: "حاولي مرة أخرى",
       download_invoice: "تحميل إيصال الدفع"
+    },
+    errors: {
+      admin_required: "يلزم تسجيل الدخول كمسؤول",
+      no_images: "لم يتم رفع صور",
+      invalid_product_id: "معرف المنتج غير صالح",
+      product_not_found: "المنتج غير موجود",
+      validation_error: "خطأ في التحقق",
+      email_not_configured: "خدمة البريد الإلكتروني غير مكوّنة",
+      failed_send_message: "تعذر إرسال الرسالة",
+      category_not_found: "الفئة غير موجودة",
+      invalid_category_id: "معرف الفئة غير صالح",
+      collection_not_found: "المجموعة غير موجودة",
+      invalid_collection_id: "معرف المجموعة غير صالح",
+      order_not_found: "الطلب غير موجود",
+      invalid_order_id: "معرف الطلب غير صالح",
+      invoice_token_invalid: "رمز الوصول للفاتورة غير صالح أو مفقود",
+      failed_generate_invoice: "تعذر إنشاء الفاتورة",
+      invalid_credentials: "بيانات الاعتماد غير صالحة",
+      invalid_status: "الحالة غير صالحة",
+      customer_not_found: "العميل غير موجود",
+      customer_id_required: "معرف العميل مطلوب",
+      phone_required: "رقم الهاتف مطلوب (٨ أرقام)",
+      invalid_subtotal: "المجموع الفرعي غير صالح",
+      discount_invalid_expired: "كود الخصم غير صالح أو منتهي",
+      validation_failed: "فشل التحقق",
+      discount_code_exists: "يوجد خصم بهذا الكود مسبقاً",
+      invalid_discount_id: "معرف الخصم غير صالح",
+      discount_not_found: "الخصم غير موجود",
+      whatsapp_not_configured: "واتساب غير مكوّن",
+      invalid_input: "إدخال غير صالح",
+      order_id_required: "رقم الطلب مطلوب (مثال: ORD-XXX)",
+      customer_name_required: "اسم العميل مطلوب",
+      customer_email_required: "البريد الإلكتروني للعميل مطلوب",
+      customer_phone_required: "هاتف العميل مطلوب",
+      customer_phone_kuwait: "يجب أن يكون رقم الهاتف كويتياً صالحاً (٨ أرقام). يرجى تحديث الرقم والمحاولة مرة أخرى.",
+      payment_initiation_failed: "فشل بدء الدفع",
+      payment_service_error: "خطأ في خدمة الدفع",
+      failed_to_create: "فشل الإنشاء",
+      failed_to_update: "فشل التحديث",
+      failed_to_delete: "فشل الحذف",
+      failed_create_order: "فشل إنشاء الطلب",
+      failed_update_order: "فشل تحديث الطلب",
+      failed_save: "فشل الحفظ",
+      failed_save_settings: "فشل حفظ الإعدادات",
+      upload_failed: "فشل الرفع",
+      image_required: "صورة واحدة على الأقل مطلوبة",
+      image_required_short: "صورة واحدة على الأقل مطلوبة",
+      code_required: "الكود مطلوب",
+      select_recipients_message: "اختر المستلمين وأدخل الرسالة",
+      something_wrong: "حدث خطأ. يرجى المحاولة مرة أخرى.",
+      login_again_invoice: "يرجى تسجيل الدخول مرة أخرى لعرض الفاتورة.",
+      cannot_open_invoice: "تعذر فتح الفاتورة",
+      item_required: "عنصر واحد على الأقل مطلوب.",
+      failed_to_save: "فشل الحفظ",
     }
   }
 };
+
+export function translateError(message: string, lang: Lang): string {
+  if (!message || lang === "en") return message;
+  const t = translations.ar.errors as Record<string, string>;
+  const trimmed = String(message).trim();
+  for (const [en, key] of Object.entries(ERROR_KEY_MAP)) {
+    if (trimmed === en || trimmed.startsWith(en + ":") || trimmed.startsWith(en + ".")) return t[key] ?? message;
+    if (en.length > 25 && trimmed.startsWith(en)) return t[key] ?? message;
+  }
+  if (trimmed.includes("Product not found:")) return t.product_not_found + ": " + trimmed.replace(/^Product not found:\s*/, "").trim();
+  if (trimmed.includes("Product is out of stock:")) return "المنتج نفد من المخزون: " + trimmed.replace(/^Product is out of stock:\s*/, "").trim();
+  if (trimmed.includes("Selected size is not available")) return "المقاس المختار غير متوفر: " + trimmed.replace(/^Selected size is not available[^:]*:\s*/, "").trim();
+  if (trimmed.includes("Customer phone must be a valid Kuwait")) return t.customer_phone_kuwait;
+  if (trimmed.includes("Deema Sandbox only accepts")) return "وضع ديما التجريبي يقبل طلبات بين 100 و 200 د.ك فقط. إجمالي طلبك " + (trimmed.match(/[\d.]+/)?.[0] || "") + " د.ك.";
+  return message;
+}

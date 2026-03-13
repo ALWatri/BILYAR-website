@@ -38,7 +38,7 @@ export default function Dashboard() {
   const stats = [
     {
       title: t.total_revenue,
-      value: `${totalRevenue.toLocaleString()} KWD`,
+      value: `${totalRevenue.toLocaleString()} ${translations[lang].currency}`,
       icon: DollarSign,
       description: t.from_last_month
     },
@@ -93,7 +93,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <p className="text-2xl font-bold text-gray-900">{recentRevenue.toFixed(3)} KWD</p>
+              <p className="text-2xl font-bold text-gray-900">{recentRevenue.toFixed(3)} {translations[lang].currency}</p>
               <p className="text-sm text-gray-500">From last {recentPaidOrders.length} paid orders (Paid, Processing, Shipped, Delivered)</p>
               {recentPaidOrders.length === 0 && (
                 <p className="text-sm text-muted-foreground py-4">No paid orders yet</p>
@@ -102,7 +102,7 @@ export default function Dashboard() {
                 {recentPaidOrders.map((o) => (
                   <div key={o.id} className="flex justify-between text-sm border-b border-gray-50 pb-2">
                     <span>{o.orderNumber}</span>
-                    <span className="font-medium">+{o.total} KWD</span>
+                    <span className="font-medium">+{o.total} {translations[lang].currency}</span>
                   </div>
                 ))}
               </div>
@@ -124,7 +124,7 @@ export default function Dashboard() {
                      <p className="text-sm font-medium leading-none">{order.customerName}</p>
                      <p className="text-xs text-muted-foreground">{order.items.length} {t.items}</p>
                    </div>
-                   <div className="ml-auto rtl:mr-auto rtl:ml-0 font-medium text-sm">+{order.total} KWD</div>
+                   <div className="ml-auto rtl:mr-auto rtl:ml-0 font-medium text-sm">+{order.total} {translations[lang].currency}</div>
                 </div>
               ))}
             </div>

@@ -55,6 +55,7 @@ const DEEMA_WEBHOOK_SECRET = process.env.DEEMA_WEBHOOK_SECRET ?? "bilyar-deema-w
 
 const CONTACT_TO = process.env.CONTACT_TO || "info@bilyarofficial.com";
 const CONTACT_FROM = process.env.CONTACT_FROM || process.env.SMTP_USER || "info@bilyarofficial.com";
+const ADMIN_ORDER_EMAIL = "info@bilyarofficial.com";
 
 function getBaseUrl(req: any): string {
   const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
@@ -253,6 +254,43 @@ export async function registerRoutes(
       return res.status(500).json({ message: "Failed to send message" });
     }
   });
+
+  /** Send order details to admin email for each new paid order. Fire-and-forget. */
+  async function sendAdminOrderNotification(orderId: number): Promise<void> {
+    try {
+      const order = await storage.getOrder(orderId);
+      if (!order || !order.items?.length) return;
+      const transport = createMailTransport();
+      if (!transport) {
+        console.warn("Admin order email: SMTP not configured, skipping");
+        return;
+      }
+      const items = order.items
+        .map((i: { productName: string; price: number; quantity: number; size?: string }) =>
+          `  - ${i.productName} (${i.size || "—"}) x${i.quantity} @ ${i.price.toFixed(3)} KWD`
+        )
+        .join("\n");
+      const text =
+        `New paid order: ${order.orderNumber}\n\n` +
+        `Customer: ${order.customerName}\n` +
+        `Email: ${order.customerEmail}\n` +
+        `Phone: ${order.customerPhone}\n` +
+        `Address: ${order.customerAddress}\n` +
+        `${order.customerCity}, ${order.customerCountry}\n\n` +
+        `Items:\n${items}\n\n` +
+        `Subtotal+Shipping: ${order.total.toFixed(3)} KWD\n` +
+        `Payment: ${(order as { paymentMethod?: string }).paymentMethod || "—"}\n`;
+      await transport.sendMail({
+        from: CONTACT_FROM,
+        to: ADMIN_ORDER_EMAIL,
+        subject: `[BILYAR] New paid order: ${order.orderNumber}`,
+        text,
+      });
+      console.log(`Admin order email sent for ${order.orderNumber}`);
+    } catch (err) {
+      console.error("Admin order email error:", err);
+    }
+  }
 
   const insertProductSchema = z.object({
     name: z.string().min(1),
@@ -1486,6 +1524,7 @@ export async function registerRoutes(
           await applyDiscountUsageIfAny(id);
           await ensurePublicInvoicePdf(id, baseUrl);
           sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
+          sendAdminOrderNotification(id).catch((err) => console.error("Admin order email:", err));
           return res.redirect(`${baseUrl}/order/success?orderId=${orderId}&t=${encodeURIComponent(signInvoiceId(id))}`);
         }
         if (charge?.status === "DECLINED" || charge?.status === "CANCELLED" || charge?.status === "FAILED") {
@@ -1523,6 +1562,7 @@ export async function registerRoutes(
           await applyDiscountUsageIfAny(orderId);
           await ensurePublicInvoicePdf(orderId, baseUrl);
           sendOrderReceivedWhatsApp(orderId, baseUrl).catch((err) => console.error("WhatsApp order_received (webhook):", err));
+          sendAdminOrderNotification(orderId).catch((err) => console.error("Admin order email:", err));
         }
       } catch (e) {
         console.error("Tap webhook error:", e);
@@ -1626,6 +1666,7 @@ export async function registerRoutes(
     await applyDiscountUsageIfAny(id);
     await ensurePublicInvoicePdf(id, baseUrl);
     sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
+    sendAdminOrderNotification(id).catch((err) => console.error("Admin order email:", err));
     return res.redirect(`${baseUrl}/order/success?orderId=${orderId}&t=${encodeURIComponent(signInvoiceId(id))}`);
   });
 
@@ -1661,6 +1702,7 @@ export async function registerRoutes(
           await applyDiscountUsageIfAny(order.id);
           await ensurePublicInvoicePdf(order.id, baseUrl);
           sendOrderReceivedWhatsApp(order.id, baseUrl).catch((err) => console.error("WhatsApp order_received (Deema webhook):", err));
+          sendAdminOrderNotification(order.id).catch((err) => console.error("Admin order email:", err));
           console.log(`Deema webhook: Order ${order.id} payment captured`);
         } else if (status.toLowerCase() === "expired" || status.toLowerCase() === "cancelled") {
           // Don't overwrite if we already marked as paid (e.g. from callback) so successful payments aren't flipped to failed

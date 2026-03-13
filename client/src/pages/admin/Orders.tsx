@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, Printer, Truck, FileDown, Trash2, Pencil, Save, X, Plus, Scissors } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { translations } from "@/lib/translations";
+import { translations, translateError } from "@/lib/translations";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
@@ -319,7 +319,7 @@ export default function Orders() {
       const res = await fetch(url, opts);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        const msg = data.message || (isRtl ? "يرجى تسجيل الدخول مرة أخرى لعرض الفاتورة." : "Please log in again to view the invoice.");
+        const msg = data.message ? translateError(data.message, lang) : (isRtl ? "يرجى تسجيل الدخول مرة أخرى لعرض الفاتورة." : "Please log in again to view the invoice.");
         alert(msg);
         return;
       }
@@ -490,7 +490,7 @@ export default function Orders() {
       status: o.status,
       total: o.total,
     }));
-    const headers = ["Order #", "Date", "Customer", "Email", "Phone", "Status", "Total (KWD)"];
+    const headers = ["Order #", "Date", "Customer", "Email", "Phone", "Status", `Total (${translations[lang].currency})`];
     const csv = [headers.join(","), ...rows.map((r) => [r.orderNumber, r.date, r.customer, r.email, r.phone, r.status, r.total].map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -534,7 +534,7 @@ export default function Orders() {
                     {order.status}
                   </Badge>
                 </TableCell>
-                <TableCell className={cn("text-right font-medium", isRtl && "text-left")}>{order.total} KWD</TableCell>
+                <TableCell className={cn("text-right font-medium", isRtl && "text-left")}>{order.total} {translations[lang].currency}</TableCell>
                 <TableCell className={cn("text-right", isRtl && "text-left")}>
                   <Dialog open={detailOrderId === order.id} onOpenChange={(open) => { if (!open) setDetailOrderId(null); }}>
                     <DialogTrigger asChild>
@@ -609,7 +609,7 @@ export default function Orders() {
                               ))}
                             </div>
                             {editForm.items.length === 0 && (
-                              <p className="text-sm text-amber-600 py-2">At least one item is required.</p>
+                              <p className="text-sm text-amber-600 py-2">{translateError("At least one item is required.", lang)}</p>
                             )}
                           </div>
                           <div className="flex justify-end gap-2 pt-4">
@@ -657,7 +657,7 @@ export default function Orders() {
                                     <h4 className="font-medium text-lg font-serif">{item.productName}</h4>
                                     <p className="text-sm text-gray-500">{t.qty}: {item.quantity} | {t.size}: {item.size || "N/A"}</p>
                                   </div>
-                                  <p className="font-medium">{item.price * item.quantity} KWD</p>
+                                  <p className="font-medium">{item.price * item.quantity} {translations[lang].currency}</p>
                                 </div>
                                 
                                 {Boolean(item.measurements && typeof item.measurements === "object") && (
@@ -689,15 +689,15 @@ export default function Orders() {
                         <div className="w-64 space-y-2">
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-500">{t.subtotal}</span>
-                            <span>{(order.total - order.shippingCost).toFixed(2)} KWD</span>
+                            <span>{(order.total - order.shippingCost).toFixed(2)} {translations[lang].currency}</span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-500">{t.shipping}</span>
-                            <span>{order.shippingCost} KWD</span>
+                            <span>{order.shippingCost} {translations[lang].currency}</span>
                           </div>
                           <div className="flex justify-between font-bold text-lg pt-2 border-t border-gray-100">
                             <span>{t.total}</span>
-                            <span>{order.total} KWD</span>
+                            <span>{order.total} {translations[lang].currency}</span>
                           </div>
                         </div>
                       </div>
@@ -859,7 +859,7 @@ export default function Orders() {
                     >
                       {products.map((p) => {
                         const name = lang === "ar" ? (p as { nameAr?: string }).nameAr ?? p.name : p.name;
-                        return <option key={p.id} value={p.id}>{name} – {p.price} KWD</option>;
+                        return <option key={p.id} value={p.id}>{name} – {p.price} {translations[lang].currency}</option>;
                       })}
                     </select>
                     <Input type="number" min={1} value={item.quantity} onChange={(e) => { const q = parseInt(e.target.value, 10); if (!isNaN(q) && q >= 1) setCreateForm((f) => ({ ...f, items: f.items.map((it, i) => i === idx ? { ...it, quantity: q } : it) })); }} className="w-16 rounded-none" />

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCart } from "@/lib/cart";
-import { translations } from "@/lib/translations";
+import { translations, translateError } from "@/lib/translations";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, ArrowRight, ShoppingBag, Truck, Shield } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
@@ -123,7 +123,7 @@ export default function Checkout() {
         setDiscountInput("");
         setDiscountError("");
       } else {
-        setDiscountError(data.message || t.discount_invalid);
+        setDiscountError(data.message ? translateError(data.message, lang) : t.discount_invalid);
         setAppliedDiscount(null);
       }
     } catch {
@@ -218,10 +218,10 @@ export default function Checkout() {
         // The order is already created, so it's safe to clear the cart after returning.
         window.location.href = paymentData.paymentUrl;
       } else {
-        setError(paymentData.message || "Payment initiation failed");
+        setError(translateError(paymentData.message || "Payment initiation failed", lang));
       }
     } catch (err: any) {
-      setError(err.message || "Something went wrong. Please try again.");
+      setError(translateError(err.message || "Something went wrong. Please try again.", lang));
     } finally {
       setIsSubmitting(false);
     }
@@ -473,7 +473,7 @@ export default function Checkout() {
                               {isRtl ? "المقاس" : "Size"}: {item.size} | {isRtl ? "الكمية" : "Qty"}: {item.quantity}
                             </p>
                           </div>
-                          <p className="text-sm font-medium whitespace-nowrap">{lineTotal.toFixed(3)} KWD</p>
+                          <p className="text-sm font-medium whitespace-nowrap">{lineTotal.toFixed(3)} {translations[lang].currency}</p>
                         </div>
                       );
                     })}
@@ -482,14 +482,14 @@ export default function Checkout() {
                   <div className="space-y-3 pt-4 border-t border-border">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{t.subtotal}</span>
-                      <span>{displaySubtotal.toFixed(3)} KWD</span>
+                      <span>{displaySubtotal.toFixed(3)} {translations[lang].currency}</span>
                     </div>
                     <div className="space-y-2">
                       {appliedDiscount ? (
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">{t.discount} ({appliedDiscount.code})</span>
                           <div className="flex items-center gap-2">
-                            <span className="text-green-600 font-medium">-{appliedDiscount.amount.toFixed(3)} KWD</span>
+                            <span className="text-green-600 font-medium">-{appliedDiscount.amount.toFixed(3)} {translations[lang].currency}</span>
                             <Button
                               type="button"
                               variant="ghost"
@@ -529,12 +529,12 @@ export default function Checkout() {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{t.shipping}</span>
                       <span className={displayShipping === 0 ? "text-green-600 font-medium" : ""}>
-                        {displayShipping === 0 ? t.free : `${displayShipping.toFixed(3)} KWD`}
+                        {displayShipping === 0 ? t.free : `${displayShipping.toFixed(3)} ${translations[lang].currency}`}
                       </span>
                     </div>
                     <div className="flex justify-between text-lg font-serif font-bold pt-3 border-t border-border">
                       <span>{t.total}</span>
-                      <span>{displayTotal.toFixed(3)} KWD</span>
+                      <span>{displayTotal.toFixed(3)} {translations[lang].currency}</span>
                     </div>
                   </div>
 

@@ -26,7 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { translations } from "@/lib/translations";
+import { translations, translateError } from "@/lib/translations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Category, Product } from "@/lib/data";
 import { Package, Pencil, Trash2, Upload, X, Plus } from "lucide-react";
@@ -127,7 +127,7 @@ export default function Products() {
         return { ...f, images: [...current, ...urls].join("\n") };
       });
     } catch (err) {
-      toast({ title: err instanceof Error ? err.message : "Upload failed", variant: "destructive" });
+      toast({ title: translateError(err instanceof Error ? err.message : "Upload failed", lang), variant: "destructive" });
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -195,7 +195,7 @@ export default function Products() {
       setForm(emptyForm());
       setEditingProduct(null);
     },
-    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: translateError(e.message, lang), variant: "destructive" }),
   });
 
   const updateMutation = useMutation({
@@ -241,7 +241,7 @@ export default function Products() {
       setForm(emptyForm());
       setEditingProduct(null);
     },
-    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: translateError(e.message, lang), variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -254,7 +254,7 @@ export default function Products() {
       toast({ title: t.product_deleted });
       setDeleteTarget(null);
     },
-    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: translateError(e.message, lang), variant: "destructive" }),
   });
 
   const t = translations[lang].admin;
@@ -338,7 +338,7 @@ export default function Products() {
                     </div>
                   </TableCell>
                   <TableCell className="text-gray-600">{category}</TableCell>
-                  <TableCell className={cn("text-right font-medium", isRtl && "text-left")}>{product.price} KWD</TableCell>
+                  <TableCell className={cn("text-right font-medium", isRtl && "text-left")}>{product.price} {translations[lang].currency}</TableCell>
                   <TableCell>
                     {getStockStatus(product) === "in_stock" ? (
                       <Badge variant="outline" className="rounded-sm font-normal bg-green-100 text-green-800 border-green-200">
@@ -391,7 +391,7 @@ export default function Products() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>{t.price} (KWD)</Label>
+                <Label>{t.price} ({translations[lang].currency})</Label>
                 <Input type="number" step="0.001" min="0" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} className="rounded-none" required />
               </div>
             </div>
@@ -538,7 +538,7 @@ export default function Products() {
                 </div>
               )}
               {imageList.length === 0 && (
-                <p className="text-xs text-muted-foreground">At least one image required</p>
+                <p className="text-xs text-muted-foreground">{lang === "ar" ? "صورة واحدة على الأقل مطلوبة" : "At least one image required"}</p>
               )}
             </div>
             <div className="flex flex-wrap gap-6">

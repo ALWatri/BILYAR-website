@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { translations } from "@/lib/translations";
+import { translations, translateError } from "@/lib/translations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Settings as SettingsIcon, CreditCard, Truck, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -83,7 +83,7 @@ export default function Settings() {
       toast({ title: t.settings_saved, duration: 2000 });
     },
     onError: () => {
-      toast({ title: "Failed to save settings", variant: "destructive" });
+      toast({ title: translateError("Failed to save settings", lang), variant: "destructive" });
     },
   });
 
@@ -238,7 +238,7 @@ export default function Settings() {
                     className="rounded-none pr-16"
                     data-testid="input-default-shipping"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">KWD</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">{translations[lang].currency}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {isRtl ? "يُطبَّق عندما يكون عدد القطع أقل من ٢." : "Applied when fewer than 2 items in cart."}

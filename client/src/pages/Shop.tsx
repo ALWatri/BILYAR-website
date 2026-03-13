@@ -67,7 +67,7 @@ export default function Shop() {
   });
 
   const categoryOptions = [
-    { label: isRtl ? "الكل" : "All", value: "All" },
+    { label: t.filter_all, value: "All" },
     ...apiCategories
       .filter((c: any) => c.isActive !== false)
       .map((c) => ({ label: isRtl ? c.nameAr : c.name, value: c.name })),
@@ -139,9 +139,9 @@ export default function Shop() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-48 rounded-none">
-                <DropdownMenuItem onClick={() => setSortBy("newest")}>Newest Arrivals</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy("price-asc")}>Price: Low to High</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy("price-desc")}>Price: High to Low</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("newest")}>{t.sort_newest}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("price-asc")}>{t.sort_price_asc}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("price-desc")}>{t.sort_price_desc}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             </div>

@@ -83,7 +83,7 @@ export function ProductCard({ product }: ProductCardProps) {
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">{category}</p>
         </div>
-        <p className="text-lg font-medium text-primary whitespace-nowrap" data-testid={`text-price-${product.id}`}>{product.price} KWD</p>
+        <p className="text-lg font-medium text-primary whitespace-nowrap" data-testid={`text-price-${product.id}`}>{product.price} {translations[lang].currency}</p>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import { AdminLayout } from "./AdminLayout";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import type { Category } from "@/lib/data";
-import { translations } from "@/lib/translations";
+import { translations, translateError } from "@/lib/translations";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,7 +78,7 @@ export default function Categories() {
       setEditing(null);
       setForm(emptyForm());
     },
-    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: translateError(e.message, lang), variant: "destructive" }),
   });
 
   const updateMutation = useMutation({
@@ -100,7 +100,7 @@ export default function Categories() {
       setEditing(null);
       setForm(emptyForm());
     },
-    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: translateError(e.message, lang), variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -112,7 +112,7 @@ export default function Categories() {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
       setDeleteTarget(null);
     },
-    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: translateError(e.message, lang), variant: "destructive" }),
   });
 
   const openAdd = () => {

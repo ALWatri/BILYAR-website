@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { translations } from "@/lib/translations";
+import { translations, translateError } from "@/lib/translations";
 import { setAdminToken } from "@/lib/queryClient";
 import { Globe } from "lucide-react";
 
@@ -51,7 +51,7 @@ export default function Login() {
         const data = await res.json().catch(() => ({}));
         toast({
           title: t.login_failed,
-          description: data.message || t.invalid_credentials,
+          description: data.message ? translateError(data.message, lang) : t.invalid_credentials,
           variant: "destructive",
         });
         return;

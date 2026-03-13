@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, Users, Crown, Star, User, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { translations } from "@/lib/translations";
+import { translations, translateError } from "@/lib/translations";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { OrderWithItems } from "@/lib/data";
 import { apiRequest } from "@/lib/queryClient";
@@ -74,7 +74,7 @@ export default function Customers() {
       setEditForm(null);
       toast({ title: "Customer updated" });
     },
-    onError: (err) => toast({ title: err instanceof Error ? err.message : "Failed", variant: "destructive" }),
+    onError: (err) => toast({ title: translateError(err instanceof Error ? err.message : "Failed", lang), variant: "destructive" }),
   });
 
   const deleteCustomerMutation = useMutation({
@@ -88,7 +88,7 @@ export default function Customers() {
       setDeleteTarget(null);
       toast({ title: "Customer deleted" });
     },
-    onError: (err) => toast({ title: err instanceof Error ? err.message : "Failed", variant: "destructive" }),
+    onError: (err) => toast({ title: translateError(err instanceof Error ? err.message : "Failed", lang), variant: "destructive" }),
   });
 
   const t = translations[lang].admin;
@@ -155,7 +155,7 @@ export default function Customers() {
             </div>
             <div>
               <p className="text-sm text-gray-500">{t.total_spent}</p>
-              <p className="text-2xl font-bold">{customers.reduce((sum, c) => sum + c.totalSpent, 0).toFixed(0)} KWD</p>
+              <p className="text-2xl font-bold">{customers.reduce((sum, c) => sum + c.totalSpent, 0).toFixed(0)} {translations[lang].currency}</p>
             </div>
           </div>
         </div>
@@ -196,7 +196,7 @@ export default function Customers() {
                   </TableCell>
                   <TableCell className="text-gray-600">{customer.phone}</TableCell>
                   <TableCell className="text-center font-medium">{customer.totalOrders}</TableCell>
-                  <TableCell className={cn("text-right font-medium", isRtl && "text-left")}>{customer.totalSpent.toFixed(3)} KWD</TableCell>
+                  <TableCell className={cn("text-right font-medium", isRtl && "text-left")}>{customer.totalSpent.toFixed(3)} {translations[lang].currency}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={cn("rounded-sm font-normal gap-1", loyalty.className)}>
                       <loyalty.icon className="h-3 w-3" />
@@ -237,7 +237,7 @@ export default function Customers() {
                           </div>
                           <div>
                             <p className="text-sm text-gray-500">{t.total_spent}</p>
-                            <p className="font-medium">{customer.totalSpent.toFixed(3)} KWD</p>
+                            <p className="font-medium">{customer.totalSpent.toFixed(3)} {translations[lang].currency}</p>
                           </div>
                         </div>
 
@@ -255,7 +255,7 @@ export default function Customers() {
                                     <Badge variant="outline" className={cn("rounded-sm font-normal", getStatusColor(order.status))}>
                                       {order.status}
                                     </Badge>
-                                    <span className="font-medium">{order.total.toFixed(3)} KWD</span>
+                                    <span className="font-medium">{order.total.toFixed(3)} {translations[lang].currency}</span>
                                     <Button
                                       variant="outline"
                                       size="sm"
@@ -275,7 +275,7 @@ export default function Customers() {
                                       </div>
                                       <span className="flex-1">{item.productName}</span>
                                       <span className="text-gray-500">x{item.quantity}</span>
-                                      <span className="font-medium">{(item.price * item.quantity).toFixed(3)} KWD</span>
+                                      <span className="font-medium">{(item.price * item.quantity).toFixed(3)} {translations[lang].currency}</span>
                                     </div>
                                   ))}
                                 </div>

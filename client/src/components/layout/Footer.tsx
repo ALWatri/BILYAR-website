@@ -71,10 +71,10 @@ export function Footer() {
           <div>
             <h3 className="text-lg font-serif font-medium mb-6 text-accent">{t.follow}</h3>
             <div className="flex gap-6 items-center">
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors" aria-label="Instagram">
+              <a href="https://instagram.com/bilyar.official" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors" aria-label="Instagram">
                 <Instagram className="h-6 w-6" />
               </a>
-              <a href="https://wa.me/9651234567" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors" aria-label="WhatsApp">
+              <a href="https://wa.me/96596665735" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors" aria-label="WhatsApp">
                 <WhatsAppIcon className="h-6 w-6" />
               </a>
               <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors" aria-label="TikTok">
@@ -94,6 +94,9 @@ export function Footer() {
             <Link href="/terms" className="hover:text-accent transition-colors">{t.terms}</Link>
           </div>
         </div>
+        <p className="mt-4 text-xs text-primary-foreground/50 uppercase tracking-wider text-center">
+          {t.payment_methods}
+        </p>
       </div>
     </footer>
   );

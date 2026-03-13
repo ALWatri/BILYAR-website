@@ -80,14 +80,14 @@ export default function OrderSuccess() {
                 {order.items.map(item => (
                   <div key={item.id} className="flex justify-between text-sm">
                     <span>{item.productName} x{item.quantity}</span>
-                    <span className="font-medium">{(item.price * item.quantity).toFixed(3)} KWD</span>
+                    <span className="font-medium">{(item.price * item.quantity).toFixed(3)} {translations[lang].currency}</span>
                   </div>
                 ))}
               </div>
 
               <div className="pt-3 border-t border-border flex justify-between font-serif font-bold">
                 <span>{isRtl ? "الإجمالي" : "Total"}</span>
-                <span>{order.total.toFixed(3)} KWD</span>
+                <span>{order.total.toFixed(3)} {translations[lang].currency}</span>
               </div>
               {invoiceToken && (
                 <a

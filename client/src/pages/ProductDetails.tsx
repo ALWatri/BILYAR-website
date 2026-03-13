@@ -127,7 +127,7 @@ export default function ProductDetails() {
                         purchaseVariant === "set" ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"
                       )}
                     >
-                      {t.full_set} — {product.price} KWD
+                      {t.full_set} — {product.price} {translations[lang].currency}
                     </button>
                     {topPrice != null && (
                       <button
@@ -138,14 +138,14 @@ export default function ProductDetails() {
                           purchaseVariant === "top" ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"
                         )}
                       >
-                        {t.top_only} — {topPrice} KWD
+                        {t.top_only} — {topPrice} {translations[lang].currency}
                       </button>
                     )}
                   </div>
-                  <p className="text-lg text-primary font-medium" data-testid="text-product-price">{displayPrice} KWD</p>
+                  <p className="text-lg text-primary font-medium" data-testid="text-product-price">{displayPrice} {translations[lang].currency}</p>
                 </div>
               ) : (
-                <p className="text-2xl text-primary font-medium" data-testid="text-product-price">{product.price} KWD</p>
+                <p className="text-2xl text-primary font-medium" data-testid="text-product-price">{product.price} {translations[lang].currency}</p>
               )}
             </div>
 

@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { translateError } from "@/lib/translations";
 
 interface WhatsAppStatus {
   configured: boolean;
@@ -68,7 +69,7 @@ export default function WhatsApp() {
       setMessage("");
       setSelectedPhones(new Set());
     },
-    onError: (err) => toast({ title: err instanceof Error ? err.message : "Failed", variant: "destructive" }),
+    onError: (err) => toast({ title: translateError(err instanceof Error ? err.message : "Failed", lang), variant: "destructive" }),
   });
 
   const sendOrderReceivedMutation = useMutation({
@@ -91,7 +92,7 @@ export default function WhatsApp() {
       return res.json();
     },
     onSuccess: () => toast({ title: "Order received notification sent" }),
-    onError: (err) => toast({ title: err instanceof Error ? err.message : "Failed", variant: "destructive" }),
+    onError: (err) => toast({ title: translateError(err instanceof Error ? err.message : "Failed", lang), variant: "destructive" }),
   });
 
   const sendOrderShippedMutation = useMutation({
@@ -114,14 +115,14 @@ export default function WhatsApp() {
       return res.json();
     },
     onSuccess: () => toast({ title: "Order shipped notification sent" }),
-    onError: (err) => toast({ title: err instanceof Error ? err.message : "Failed", variant: "destructive" }),
+    onError: (err) => toast({ title: translateError(err instanceof Error ? err.message : "Failed", lang), variant: "destructive" }),
   });
 
   const handleSendMarketing = () => {
     const phonesFromManual = manualPhones.split(/[\n,;]/).map((p) => p.trim().replace(/\D/g, "")).filter(Boolean);
     const phones = Array.from(new Set([...Array.from(selectedPhones), ...phonesFromManual])).map((p) => (p.startsWith("965") ? p : `965${p}`));
     if (!phones.length || !message.trim()) {
-      toast({ title: "Select recipients and enter a message", variant: "destructive" });
+      toast({ title: translateError("Select recipients and enter a message", lang), variant: "destructive" });
       return;
     }
     sendMarketingMutation.mutate({ phones, message: message.trim() });

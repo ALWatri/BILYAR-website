@@ -3,7 +3,7 @@ import { AdminLayout } from "./AdminLayout";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import type { Collection } from "@/lib/data";
-import { translations } from "@/lib/translations";
+import { translations, translateError } from "@/lib/translations";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -85,7 +85,7 @@ export default function Collections() {
       setEditing(null);
       setForm(emptyForm());
     },
-    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: translateError(e.message, lang), variant: "destructive" }),
   });
 
   const updateMutation = useMutation({
@@ -107,7 +107,7 @@ export default function Collections() {
       setEditing(null);
       setForm(emptyForm());
     },
-    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: translateError(e.message, lang), variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -119,7 +119,7 @@ export default function Collections() {
       queryClient.invalidateQueries({ queryKey: ["/api/collections"] });
       setDeleteTarget(null);
     },
-    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: translateError(e.message, lang), variant: "destructive" }),
   });
 
   const openAdd = () => {
@@ -161,7 +161,7 @@ export default function Collections() {
       const { urls } = await res.json();
       setForm((f) => ({ ...f, image: urls?.[0] || f.image }));
     } catch (e) {
-      toast({ title: e instanceof Error ? e.message : "Upload failed", variant: "destructive" });
+      toast({ title: translateError(e instanceof Error ? e.message : "Upload failed", lang), variant: "destructive" });
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
