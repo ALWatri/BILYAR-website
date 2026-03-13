@@ -74,10 +74,14 @@ function safeNum(v: unknown, fallback: number): number {
 }
 
 function getLogoPath(): string | null {
+  return getImagePath("bilyar-logo.png");
+}
+
+function getImagePath(filename: string): string | null {
   const candidates = [
-    path.join(__dirname, "public", "images", "bilyar-logo.png"),
-    path.join(process.cwd(), "dist", "public", "images", "bilyar-logo.png"),
-    path.join(process.cwd(), "client", "public", "images", "bilyar-logo.png"),
+    path.join(__dirname, "public", "images", filename),
+    path.join(process.cwd(), "dist", "public", "images", filename),
+    path.join(process.cwd(), "client", "public", "images", filename),
   ];
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;
@@ -274,7 +278,7 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     doc.y += 24;
 
     // Footer fixed at very bottom of page
-    const footerThanksY = pageH - margin - 58;
+    const footerThanksY = pageH - margin - 90;
     const footerContactY = pageH - margin - 32;
 
     // Divider above footer
@@ -282,6 +286,28 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
 
     // Thank you — fixed position
     doc.fontSize(18).fillColor(INK).font("Helvetica-Oblique").text("We are honoured by your trust.", contentLeft, footerThanksY, { align: "center", width: contentWidth });
+
+    // Payment logos — KNET, Visa, Mastercard, Deema
+    const logoH = 20;
+    const logoGap = 12;
+    const logosStartY = footerThanksY + 28;
+    let logoX = contentLeft + (contentWidth - (4 * 44 + 3 * logoGap)) / 2;
+    const knetPath = getImagePath("knet-logo.png");
+    const deemaPath = getImagePath("deema-logo.png");
+    if (knetPath) {
+      doc.image(knetPath, logoX, logosStartY, { width: 44, height: logoH } as any);
+      logoX += 44 + logoGap;
+    }
+    doc.rect(logoX, logosStartY, 44, logoH).fill("#1A1F71");
+    doc.fontSize(9).fillColor("#F7B600").font("Helvetica-BoldOblique").text("VISA", logoX + 22, logosStartY + logoH / 2 - 2, { width: 44, align: "center" });
+    logoX += 44 + logoGap;
+    doc.rect(logoX, logosStartY, 44, logoH).fill("#000000");
+    doc.circle(logoX + 14, logosStartY + logoH / 2, 7).fill("#EB001B");
+    doc.circle(logoX + 30, logosStartY + logoH / 2, 7).fill("#F79E1B");
+    logoX += 44 + logoGap;
+    if (deemaPath) {
+      doc.image(deemaPath, logoX, logosStartY, { width: 44, height: logoH } as any);
+    }
 
     // Contact — fixed at very bottom
     const siteUrl = process.env.SITE_URL || "https://bilyarofficial.com";
