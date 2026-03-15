@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import path from "path";
 import fs from "fs";
+import sharp from "sharp";
 import type { Order, OrderItem, Settings } from "@shared/schema";
 import { getInvoiceHtml } from "./invoice-html";
 import { toEnglishCity, toEnglishText, addressToEnglish } from "./invoice-locale";
@@ -89,6 +90,16 @@ function getImagePath(filename: string): string | null {
   return null;
 }
 
+async function loadSvgAsPngBuffer(filename: string): Promise<Buffer | null> {
+  const p = getImagePath(filename);
+  if (!p) return null;
+  try {
+    return await sharp(p).png().toBuffer();
+  } catch {
+    return null;
+  }
+}
+
 function getArabicFontPath(): string | null {
   const candidates = [
     path.join(process.cwd(), "assets", "fonts", "NotoNaskhArabic-Regular.ttf"),
@@ -105,7 +116,15 @@ function getArabicFontPath(): string | null {
 }
 
 /** PDFKit fallback when Puppeteer/Chromium unavailable (e.g. Render) */
-function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null): Promise<Buffer> {
+async function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null): Promise<Buffer> {
+  const [knetPng, visaPng, mcPng, applePng, deemaPng] = await Promise.all([
+    loadSvgAsPngBuffer("knet.svg"),
+    loadSvgAsPngBuffer("visa.svg"),
+    loadSvgAsPngBuffer("mastercard.svg"),
+    loadSvgAsPngBuffer("applepay.svg"),
+    loadSvgAsPngBuffer("deema.svg"),
+  ]);
+
   return new Promise((resolve, reject) => {
     const items = Array.isArray(order?.items) ? order.items : [];
     const total = safeNum(order?.total, 0);
@@ -287,32 +306,17 @@ function generatePdfWithPdfKit(order: OrderWithItems, settings?: Settings | null
     // Thank you — fixed position
     doc.fontSize(18).fillColor(INK).font("Helvetica-Oblique").text("We are honoured by your trust.", contentLeft, footerThanksY, { align: "center", width: contentWidth });
 
-    // Payment logos — KNET, Visa, Mastercard, Apple Pay, Deema (uniform 34×22 box, aspect preserved)
+    // Payment logos — KNET, Visa, Mastercard, Apple Pay, Deema (Tap-style SVGs as PNG)
     const logoW = 34;
     const logoH = 22;
     const logoGap = 10;
-    const numLogos = 5;
     const logosStartY = footerThanksY + 28;
-    const totalLogosW = numLogos * logoW + (numLogos - 1) * logoGap;
+    const logoBuffers = [knetPng, visaPng, mcPng, applePng, deemaPng].filter(Boolean);
+    const totalLogosW = logoBuffers.length * logoW + (logoBuffers.length - 1) * logoGap;
     let logoX = contentLeft + (contentWidth - totalLogosW) / 2;
-    const knetPath = getImagePath("knet-logo.png");
-    const deemaPath = getImagePath("deema-logo.png");
-    if (knetPath) {
-      doc.image(knetPath, logoX, logosStartY, { fit: [logoW, logoH], align: "center", valign: "center" } as any);
+    for (const buf of logoBuffers) {
+      doc.image(buf as Buffer, logoX, logosStartY, { fit: [logoW, logoH], align: "center", valign: "center" } as any);
       logoX += logoW + logoGap;
-    }
-    doc.rect(logoX, logosStartY, logoW, logoH).fill("#0E4595");
-    doc.fontSize(8).fillColor("#FFFFFF").font("Helvetica-Bold").text("VISA", logoX, logosStartY + 8, { width: logoW, align: "center" });
-    logoX += logoW + logoGap;
-    doc.rect(logoX, logosStartY, logoW, logoH).fill("#000000");
-    doc.circle(logoX + 10, logosStartY + logoH / 2, 5).fill("#EB001B");
-    doc.circle(logoX + 24, logosStartY + logoH / 2, 5).fill("#F79E1B");
-    logoX += logoW + logoGap;
-    doc.roundedRect(logoX, logosStartY, logoW, logoH, 3).fill("#000000");
-    doc.fontSize(7).fillColor("#FFFFFF").font("Helvetica").text("Apple Pay", logoX, logosStartY + 8, { width: logoW, align: "center" });
-    logoX += logoW + logoGap;
-    if (deemaPath) {
-      doc.image(deemaPath, logoX, logosStartY, { fit: [logoW, logoH], align: "center", valign: "center" } as any);
     }
 
     // Contact — fixed at very bottom

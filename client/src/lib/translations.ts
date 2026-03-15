@@ -658,7 +658,7 @@ export const translations = {
       total: "الإجمالي",
       payment_method: "طريقة الدفع",
       card_payment: "بطاقة / كي نت",
-      card_desc: "ادفعي بأمان ببطاقتك الائتمانية أو كي نت عبر ماي فاتورة",
+      card_desc: "ادفعي بأمان ببطاقتك الائتمانية أو كي نت عبر Tap",
       installments: "الدفع بالتقسيط",
       installments_desc: "قسّمي المبلغ على 3-4 أقساط شهرية بدون فوائد مع ديما",
       place_order: "تأكيد الطلب",

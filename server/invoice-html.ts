@@ -1,6 +1,23 @@
+import fs from "fs";
+import path from "path";
 import type { Order, OrderItem, Settings } from "@shared/schema";
 import { toEnglishCity, toEnglishText, addressToEnglish } from "./invoice-locale";
 import { hasArabic } from "./translate";
+
+function getSvgDataUrl(filename: string): string {
+  const candidates = [
+    path.join(process.cwd(), "client", "public", "images", filename),
+    path.join(process.cwd(), "dist", "public", "images", filename),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      const svg = fs.readFileSync(p, "utf-8");
+      const b64 = Buffer.from(svg).toString("base64");
+      return `data:image/svg+xml;base64,${b64}`;
+    }
+  }
+  return "";
+}
 
 type OrderWithItems = Order & { items: OrderItem[] };
 
@@ -172,11 +189,11 @@ ${discountAmount > 0 ? `<div class="row"><span>Discount${discountCode ? ` (${esc
 <div class="divider"></div>
 <p class="thanks">We are honoured by your trust.</p>
 <div class="payment-logos">
-  <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/knet.svg" alt="KNET" class="payment-logo"/></div>
-  <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/visa.svg" alt="Visa" class="payment-logo"/></div>
-  <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/mastercard.svg" alt="Mastercard" class="payment-logo"/></div>
-  <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/applepay.svg" alt="Apple Pay" class="payment-logo"/></div>
-  <div class="payment-logo-wrap"><img src="${siteUrl.replace(/\/$/, "")}/images/deema.svg" alt="Deema" class="payment-logo"/></div>
+  <div class="payment-logo-wrap"><img src="${getSvgDataUrl("knet.svg")}" alt="KNET" class="payment-logo"/></div>
+  <div class="payment-logo-wrap"><img src="${getSvgDataUrl("visa.svg")}" alt="Visa" class="payment-logo"/></div>
+  <div class="payment-logo-wrap"><img src="${getSvgDataUrl("mastercard.svg")}" alt="Mastercard" class="payment-logo"/></div>
+  <div class="payment-logo-wrap"><img src="${getSvgDataUrl("applepay.svg")}" alt="Apple Pay" class="payment-logo"/></div>
+  <div class="payment-logo-wrap"><img src="${getSvgDataUrl("deema.svg")}" alt="Deema" class="payment-logo"/></div>
 </div>
 <footer class="contact-footer">${siteDisplay} • ${storePhone} • ${storeEmail}</footer>
 </div>
