@@ -14,6 +14,7 @@ import { translateError } from "@/lib/translations";
 
 interface WhatsAppStatus {
   configured: boolean;
+  orderReceivedLegacy?: boolean;
   contentSids?: { orderReceived: string; orderShipped: string; marketing: string };
   templates?: { orderReceived: string; orderShipped: string; marketing: string };
 }
@@ -201,7 +202,7 @@ export default function WhatsApp() {
           <div>
             <h3 className="font-semibold text-amber-900 mb-1">WhatsApp not configured</h3>
             <p className="text-sm text-amber-800 mb-3">
-              Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM (or TWILIO_MESSAGING_SERVICE_SID). Create Content Templates in Twilio Console and set TWILIO_CONTENT_ORDER_RECEIVED, TWILIO_CONTENT_ORDER_SHIPPED, TWILIO_CONTENT_MARKETING.
+              Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM (or TWILIO_MESSAGING_SERVICE_SID). Create Content Templates in Twilio Console and set TWILIO_CONTENT_ORDER_RECEIVED (use new template SID HX… with {{1}}, {{2}}, {{3}}). To use old template ({{first_name}}), add WHATSAPP_ORDER_RECEIVED_LEGACY=1.
             </p>
             <a
               href="https://www.twilio.com/docs/whatsapp/quickstart"
@@ -239,6 +240,12 @@ export default function WhatsApp() {
           </div>
         </div>
       </div>
+
+      {status.configured && status.orderReceivedLegacy && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-sm text-sm text-blue-800">
+          Using legacy order_received format (text + separate PDF). To use the new Media template with message + invoice in one send, set TWILIO_CONTENT_ORDER_RECEIVED to your new template SID and remove WHATSAPP_ORDER_RECEIVED_LEGACY.
+        </div>
+      )}
 
       {status.configured && (
         <div className="space-y-8">

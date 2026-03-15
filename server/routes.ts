@@ -21,7 +21,7 @@ import {
   checkAdminCredentials,
   getAdminSessionCookieName,
 } from "./invoice-auth";
-import { isWhatsAppConfigured, sendTemplate, sendText } from "./whatsapp";
+import { isWhatsAppConfigured, sendTemplate, sendText, sendDocument } from "./whatsapp";
 import { z } from "zod";
 import nodemailer from "nodemailer";
 
@@ -1228,32 +1228,9 @@ export async function registerRoutes(
   const TWILIO_CONTENT_ORDER_RECEIVED = process.env.TWILIO_CONTENT_ORDER_RECEIVED || "";
   const TWILIO_CONTENT_ORDER_SHIPPED = process.env.TWILIO_CONTENT_ORDER_SHIPPED || "";
   const TWILIO_CONTENT_MARKETING = process.env.TWILIO_CONTENT_MARKETING || "";
+  const USE_LEGACY_ORDER_RECEIVED = process.env.WHATSAPP_ORDER_RECEIVED_LEGACY === "1";
 
-  async function sendOrderReceivedWhatsApp(orderId: number, baseUrl: string) {
-    if (!isWhatsAppConfigured()) {
-      console.warn("WhatsApp skip: not configured (TWILIO_ACCOUNT_SID/AUTH_TOKEN missing)");
-      return;
-    }
-    if (!TWILIO_CONTENT_ORDER_RECEIVED) {
-      console.warn("WhatsApp skip: TWILIO_CONTENT_ORDER_RECEIVED not set");
-      return;
-    }
-    const order = await storage.getOrder(orderId);
-    if (!order || !order.customerPhone) {
-      console.warn("WhatsApp skip: order not found or no customerPhone", { orderId, hasOrder: !!order });
-      return;
-    }
-    const name = order.customerName || (order as any).customerNameEn || "";
-    const firstName = name.split(" ")[0] || name;
-    const publicBase = (SITE_URL || baseUrl).replace(/\/$/, "");
-    const isPublicUrl = publicBase.startsWith("https://");
-
-    if (!isPublicUrl) {
-      console.warn("WhatsApp skip: SITE_URL not set or not https; need public URL for invoice PDF in template");
-      return;
-    }
-
-    // Build invoice PDF URL for template variable {{3}}. Template expects: {{1}}=name, {{2}}=orderNumber, {{3}}=media URL.
+  async function buildInvoiceCandidatesAndUrl(order: any, orderId: number, publicBase: string): Promise<string> {
     const invoiceCandidates: string[] = [];
     const storedPublicUrl = (order as { invoicePublicUrl?: string | null }).invoicePublicUrl;
     if (storedPublicUrl) invoiceCandidates.push(storedPublicUrl);
@@ -1293,7 +1270,6 @@ export async function registerRoutes(
     }
     invoiceCandidates.push(`${publicBase}${getSignedInvoicePath(orderId, publicBase, true)}`);
 
-    // Pick first reachable URL for Twilio to fetch the PDF.
     let invoiceUrl = "";
     for (const candidate of invoiceCandidates) {
       try {
@@ -1307,21 +1283,73 @@ export async function registerRoutes(
         console.warn("WhatsApp: invoice candidate fetch failed", { candidate, error: String(checkErr) });
       }
     }
-    if (!invoiceUrl) invoiceUrl = invoiceCandidates[0] || "";
+    return invoiceUrl || invoiceCandidates[0] || "";
+  }
 
+  async function sendOrderReceivedWhatsApp(orderId: number, baseUrl: string) {
+    if (!isWhatsAppConfigured()) {
+      console.warn("WhatsApp skip: not configured (TWILIO_ACCOUNT_SID/AUTH_TOKEN missing)");
+      return;
+    }
+    if (!TWILIO_CONTENT_ORDER_RECEIVED) {
+      console.warn("WhatsApp skip: TWILIO_CONTENT_ORDER_RECEIVED not set");
+      return;
+    }
+    const order = await storage.getOrder(orderId);
+    if (!order || !order.customerPhone) {
+      console.warn("WhatsApp skip: order not found or no customerPhone", { orderId, hasOrder: !!order });
+      return;
+    }
+    const name = order.customerName || (order as any).customerNameEn || "";
+    const firstName = name.split(" ")[0] || name;
+    const publicBase = (SITE_URL || baseUrl).replace(/\/$/, "");
+    const isPublicUrl = publicBase.startsWith("https://");
+
+    if (USE_LEGACY_ORDER_RECEIVED) {
+      // Legacy: text template (first_name) + separate sendDocument for invoice
+      console.log(`WhatsApp: sending order_received (legacy) to ${order.customerPhone}, template ${TWILIO_CONTENT_ORDER_RECEIVED}`);
+      const templateRes = await sendTemplate(order.customerPhone, TWILIO_CONTENT_ORDER_RECEIVED, { first_name: firstName });
+      if (!templateRes.ok) {
+        console.error("WhatsApp order_received (legacy) template failed:", templateRes.error);
+        return;
+      }
+      if (isPublicUrl) {
+        const invoiceUrl = await buildInvoiceCandidatesAndUrl(order, orderId, publicBase);
+        if (invoiceUrl) {
+          const docRes = await sendDocument(
+            order.customerPhone,
+            invoiceUrl,
+            `invoice-${order.orderNumber}.pdf`,
+            `Your order ${order.orderNumber} - BILYAR • طلبك ${order.orderNumber}`
+          );
+          if (docRes.ok) console.log(`WhatsApp: invoice PDF sent to ${order.customerPhone}`);
+          else console.warn("WhatsApp invoice PDF failed:", docRes.error);
+        }
+      }
+      console.log(`WhatsApp: Order ${order.orderNumber} confirmation sent to ${order.customerPhone}`);
+      return;
+    }
+
+    // New Media template: {{1}}=name, {{2}}=orderNumber, {{3}}=invoice PDF URL
+    if (!isPublicUrl) {
+      console.warn("WhatsApp skip: SITE_URL not set or not https; need public URL for invoice PDF in Media template");
+      return;
+    }
+
+    const invoiceUrl = await buildInvoiceCandidatesAndUrl(order, orderId, publicBase);
     if (!invoiceUrl) {
       console.error("WhatsApp: no invoice URL available for template");
       return;
     }
 
-    console.log(`WhatsApp: sending order_received (message + invoice) to ${order.customerPhone}`);
+    console.log(`WhatsApp: sending order_received (Media template) to ${order.customerPhone}, template ${TWILIO_CONTENT_ORDER_RECEIVED}`);
     const templateRes = await sendTemplate(
       order.customerPhone,
       TWILIO_CONTENT_ORDER_RECEIVED,
       { "1": firstName, "2": order.orderNumber, "3": invoiceUrl }
     );
     if (!templateRes.ok) {
-      console.error("WhatsApp order_received template failed:", templateRes.error, "- template expects {{1}}=name, {{2}}=orderNumber, {{3}}=invoice PDF URL");
+      console.error("WhatsApp order_received template failed:", templateRes.error, "- ensure template has {{1}}, {{2}}, {{3}} and TWILIO_CONTENT_ORDER_RECEIVED is the new template SID (HX...). Set WHATSAPP_ORDER_RECEIVED_LEGACY=1 to use old format.");
       return;
     }
     console.log(`WhatsApp: Order ${order.orderNumber} confirmation + invoice sent to ${order.customerPhone}`);
@@ -1343,6 +1371,7 @@ export async function registerRoutes(
   app.get("/api/whatsapp/status", (_req, res) => {
     res.json({
       configured: isWhatsAppConfigured(),
+      orderReceivedLegacy: USE_LEGACY_ORDER_RECEIVED,
       contentSids: {
         orderReceived: TWILIO_CONTENT_ORDER_RECEIVED || "(not set)",
         orderShipped: TWILIO_CONTENT_ORDER_SHIPPED || "(not set)",

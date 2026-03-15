@@ -63,7 +63,12 @@ TWILIO_WHATSAPP_FROM=whatsapp:+96512345678
 # Or for production with Messaging Service:
 # TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
+# New Media template ({{1}}, {{2}}, {{3}}): message + invoice in one send
 TWILIO_CONTENT_ORDER_RECEIVED=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# If you still have the old text-only template ({{first_name}}), use:
+# WHATSAPP_ORDER_RECEIVED_LEGACY=1
+
 TWILIO_CONTENT_ORDER_SHIPPED=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TWILIO_CONTENT_MARKETING=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
