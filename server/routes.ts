@@ -1572,7 +1572,7 @@ export async function registerRoutes(
           }
           await applyDiscountUsageIfAny(id);
           await ensurePublicInvoicePdf(id, baseUrl);
-          sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
+          await sendOrderReceivedWhatsApp(id, baseUrl);
           sendAdminOrderNotification(id).catch((err) => console.error("Admin order email:", err));
           return res.redirect(`${baseUrl}/order/success?orderId=${orderId}&t=${encodeURIComponent(signInvoiceId(id))}`);
         }
@@ -1591,7 +1591,6 @@ export async function registerRoutes(
   });
 
   app.post("/api/payment/tap/webhook", express.json(), async (req, res) => {
-    res.status(200).send("OK");
     const body = req.body;
     const chargeId = body?.id;
     const status = body?.status;
@@ -1610,13 +1609,14 @@ export async function registerRoutes(
           }
           await applyDiscountUsageIfAny(orderId);
           await ensurePublicInvoicePdf(orderId, baseUrl);
-          sendOrderReceivedWhatsApp(orderId, baseUrl).catch((err) => console.error("WhatsApp order_received (webhook):", err));
+          await sendOrderReceivedWhatsApp(orderId, baseUrl);
           sendAdminOrderNotification(orderId).catch((err) => console.error("Admin order email:", err));
         }
       } catch (e) {
         console.error("Tap webhook error:", e);
       }
     }
+    return res.status(200).send("OK");
   });
 
   // ===== DEEMA BNPL PAYMENT =====
@@ -1714,7 +1714,7 @@ export async function registerRoutes(
     }
     await applyDiscountUsageIfAny(id);
     await ensurePublicInvoicePdf(id, baseUrl);
-    sendOrderReceivedWhatsApp(id, baseUrl).catch((err) => console.error("WhatsApp order_received:", err));
+    await sendOrderReceivedWhatsApp(id, baseUrl);
     sendAdminOrderNotification(id).catch((err) => console.error("Admin order email:", err));
     return res.redirect(`${baseUrl}/order/success?orderId=${orderId}&t=${encodeURIComponent(signInvoiceId(id))}`);
   });
@@ -1750,7 +1750,7 @@ export async function registerRoutes(
           }
           await applyDiscountUsageIfAny(order.id);
           await ensurePublicInvoicePdf(order.id, baseUrl);
-          sendOrderReceivedWhatsApp(order.id, baseUrl).catch((err) => console.error("WhatsApp order_received (Deema webhook):", err));
+          await sendOrderReceivedWhatsApp(order.id, baseUrl);
           sendAdminOrderNotification(order.id).catch((err) => console.error("Admin order email:", err));
           console.log(`Deema webhook: Order ${order.id} payment captured`);
         } else if (status.toLowerCase() === "expired" || status.toLowerCase() === "cancelled") {
