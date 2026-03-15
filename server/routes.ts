@@ -21,7 +21,7 @@ import {
   checkAdminCredentials,
   getAdminSessionCookieName,
 } from "./invoice-auth";
-import { isWhatsAppConfigured, sendTemplate, sendDocument, sendText } from "./whatsapp";
+import { isWhatsAppConfigured, sendTemplate, sendText } from "./whatsapp";
 import { z } from "zod";
 import nodemailer from "nodemailer";
 
@@ -1248,99 +1248,83 @@ export async function registerRoutes(
     const publicBase = (SITE_URL || baseUrl).replace(/\/$/, "");
     const isPublicUrl = publicBase.startsWith("https://");
 
-    console.log(`WhatsApp: sending order_received to ${order.customerPhone}`);
-    const templateRes = await sendTemplate(
-      order.customerPhone,
-      TWILIO_CONTENT_ORDER_RECEIVED,
-      { first_name: firstName }
-    );
-    if (!templateRes.ok) {
-      console.error("WhatsApp order_received template failed:", templateRes.error, "- check TWILIO_CONTENT_ORDER_RECEIVED SID and template variable names (e.g. first_name vs 1)");
+    if (!isPublicUrl) {
+      console.warn("WhatsApp skip: SITE_URL not set or not https; need public URL for invoice PDF in template");
       return;
     }
 
-    if (isPublicUrl) {
-      const invoiceCandidates: string[] = [];
-      const storedPublicUrl = (order as { invoicePublicUrl?: string | null }).invoicePublicUrl;
-      if (storedPublicUrl) invoiceCandidates.push(storedPublicUrl);
-      try {
-        const settings = await storage.getSettings();
-        const pdf = await generateInvoicePdf(order, settings);
-        console.log("WhatsApp: invoice PDF size bytes", pdf.length);
-        // WhatsApp document limits apply; keep visibility in logs.
-        if (pdf.length > 15 * 1024 * 1024) {
-          console.warn("WhatsApp: invoice PDF may exceed WhatsApp media size limits", { bytes: pdf.length });
-        }
-
-        // Always write a same-domain static file URL first (no auth/query required).
-        const invoicesDir = path.join(UPLOADS_DIR, "invoices");
-        if (!fs.existsSync(invoicesDir)) fs.mkdirSync(invoicesDir, { recursive: true });
-        const filename = `invoice-${order.orderNumber}-${Date.now()}.pdf`;
-        fs.writeFileSync(path.join(invoicesDir, filename), pdf);
-        invoiceCandidates.push(`${publicBase}/uploads/invoices/${encodeURIComponent(filename)}`);
-
-        const bucket = getFirebaseStorageBucket();
-        if (bucket) {
-          const objectName = `invoices/invoice-${order.orderNumber}-${Date.now()}.pdf`;
-          const file = bucket.file(objectName);
-          await file.save(pdf, { metadata: { contentType: "application/pdf" } });
-          try {
-            await file.makePublic();
-            invoiceCandidates.push(`https://storage.googleapis.com/${bucket.name}/${objectName}`);
-          } catch (publicErr) {
-            console.warn("WhatsApp: makePublic failed, using signed GCS URL", publicErr);
-            const [signedUrl] = await file.getSignedUrl({
-              version: "v4",
-              action: "read",
-              expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
-            });
-            invoiceCandidates.push(signedUrl);
-          }
-        }
-      } catch (err) {
-        console.warn("WhatsApp: pre-generated invoice file failed:", err);
+    // Build invoice PDF URL for template variable {{3}}. Template expects: {{1}}=name, {{2}}=orderNumber, {{3}}=media URL.
+    const invoiceCandidates: string[] = [];
+    const storedPublicUrl = (order as { invoicePublicUrl?: string | null }).invoicePublicUrl;
+    if (storedPublicUrl) invoiceCandidates.push(storedPublicUrl);
+    try {
+      const settings = await storage.getSettings();
+      const pdf = await generateInvoicePdf(order, settings);
+      console.log("WhatsApp: invoice PDF size bytes", pdf.length);
+      if (pdf.length > 15 * 1024 * 1024) {
+        console.warn("WhatsApp: invoice PDF may exceed WhatsApp media size limits", { bytes: pdf.length });
       }
-      const invoicePath = getSignedInvoicePath(orderId, publicBase, true);
-      invoiceCandidates.push(`${publicBase}${invoicePath}`);
+      const invoicesDir = path.join(UPLOADS_DIR, "invoices");
+      if (!fs.existsSync(invoicesDir)) fs.mkdirSync(invoicesDir, { recursive: true });
+      const filename = `invoice-${order.orderNumber}-${Date.now()}.pdf`;
+      fs.writeFileSync(path.join(invoicesDir, filename), pdf);
+      invoiceCandidates.push(`${publicBase}/uploads/invoices/${encodeURIComponent(filename)}`);
 
-      // Prefer URLs that are reachable from server side; then try each with Twilio until one works.
-      const reachableCandidates: string[] = [];
-      for (const candidate of invoiceCandidates) {
+      const bucket = getFirebaseStorageBucket();
+      if (bucket) {
+        const objectName = `invoices/invoice-${order.orderNumber}-${Date.now()}.pdf`;
+        const file = bucket.file(objectName);
+        await file.save(pdf, { metadata: { contentType: "application/pdf" } });
         try {
-          const check = await fetch(candidate, { method: "GET" });
-          if (check.ok) {
-            reachableCandidates.push(candidate);
-            continue;
-          }
-          console.warn("WhatsApp: invoice candidate not reachable", { candidate, status: check.status });
-        } catch (checkErr) {
-          console.warn("WhatsApp: invoice candidate fetch failed", { candidate, error: String(checkErr) });
+          await file.makePublic();
+          invoiceCandidates.push(`https://storage.googleapis.com/${bucket.name}/${objectName}`);
+        } catch (publicErr) {
+          console.warn("WhatsApp: makePublic failed, using signed GCS URL", publicErr);
+          const [signedUrl] = await file.getSignedUrl({
+            version: "v4",
+            action: "read",
+            expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+          });
+          invoiceCandidates.push(signedUrl);
         }
       }
-      const tryCandidates = reachableCandidates.length > 0 ? reachableCandidates : invoiceCandidates;
-      let sent = false;
-      for (const invoiceUrl of tryCandidates) {
-        console.log("WhatsApp: trying invoice URL", invoiceUrl);
-        const docRes = await sendDocument(
-          order.customerPhone,
-          invoiceUrl,
-          `invoice-${order.orderNumber}.pdf`,
-          `Your order ${order.orderNumber} - BILYAR • طلبك ${order.orderNumber}`
-        );
-        if (docRes.ok) {
-          sent = true;
-          console.log(`WhatsApp: Invoice PDF sent to ${order.customerPhone}`);
+    } catch (err) {
+      console.warn("WhatsApp: pre-generated invoice file failed:", err);
+    }
+    invoiceCandidates.push(`${publicBase}${getSignedInvoicePath(orderId, publicBase, true)}`);
+
+    // Pick first reachable URL for Twilio to fetch the PDF.
+    let invoiceUrl = "";
+    for (const candidate of invoiceCandidates) {
+      try {
+        const check = await fetch(candidate, { method: "GET" });
+        if (check.ok) {
+          invoiceUrl = candidate;
           break;
         }
-        console.warn("WhatsApp invoice PDF failed for URL:", { invoiceUrl, error: docRes.error });
+        console.warn("WhatsApp: invoice candidate not reachable", { candidate, status: check.status });
+      } catch (checkErr) {
+        console.warn("WhatsApp: invoice candidate fetch failed", { candidate, error: String(checkErr) });
       }
-      if (!sent) {
-        console.error("WhatsApp invoice PDF: all candidate URLs failed");
-      }
-    } else {
-      console.warn("WhatsApp: Skipping invoice PDF (SITE_URL not set; Twilio needs public URL to fetch PDF)");
     }
-    console.log(`WhatsApp: Order ${order.orderNumber} confirmation sent to ${order.customerPhone}`);
+    if (!invoiceUrl) invoiceUrl = invoiceCandidates[0] || "";
+
+    if (!invoiceUrl) {
+      console.error("WhatsApp: no invoice URL available for template");
+      return;
+    }
+
+    console.log(`WhatsApp: sending order_received (message + invoice) to ${order.customerPhone}`);
+    const templateRes = await sendTemplate(
+      order.customerPhone,
+      TWILIO_CONTENT_ORDER_RECEIVED,
+      { "1": firstName, "2": order.orderNumber, "3": invoiceUrl }
+    );
+    if (!templateRes.ok) {
+      console.error("WhatsApp order_received template failed:", templateRes.error, "- template expects {{1}}=name, {{2}}=orderNumber, {{3}}=invoice PDF URL");
+      return;
+    }
+    console.log(`WhatsApp: Order ${order.orderNumber} confirmation + invoice sent to ${order.customerPhone}`);
   }
 
   async function sendOrderShippedWhatsApp(orderId: number) {

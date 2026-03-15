@@ -223,7 +223,7 @@ export default function WhatsApp() {
             </div>
             <div>
               <p className="font-semibold">Order received</p>
-              <p className="text-sm text-gray-500">Sent automatically when payment succeeds, with invoice PDF</p>
+              <p className="text-sm text-gray-500">Sent automatically when payment succeeds: message + invoice PDF in one WhatsApp template</p>
             </div>
           </div>
         </div>
@@ -246,7 +246,7 @@ export default function WhatsApp() {
             <h2 className="text-xl font-serif font-semibold mb-4 flex items-center gap-2">
               <Mail className="h-5 w-5" /> Manual resend
             </h2>
-            <p className="text-sm text-gray-500 mb-4">Resend order received or shipped notification for a specific order (e.g. for testing).</p>
+            <p className="text-sm text-gray-500 mb-4">Resend order received (message + invoice PDF) or order shipped notification for a specific order (e.g. for testing).</p>
             <div className="flex gap-4 items-end">
               <div>
                 <Label>Order ID or number</Label>

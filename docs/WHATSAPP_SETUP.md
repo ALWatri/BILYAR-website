@@ -33,9 +33,10 @@ Templates must be approved by WhatsApp before use. Create them in Twilio:
 1. Go to [Content Template Builder](https://console.twilio.com/us1/develop/sms/content-template-builder)
 2. Create three templates:
 
-### order_received (Utility)
-- **Body:** `Hi {{first_name}}, we are excited to have you here! You will get notifications of your order as we process them.`
-- **Variables:** first_name = customer first name
+### order_received (Utility, Media)
+- **Body:** e.g. `مرحباً {{1}}، تم استلام طلبكم {{2}} بنجاح...`
+- **Media URL:** `{{3}}` (invoice PDF URL)
+- **Variables:** 1 = first name, 2 = order number, 3 = invoice PDF URL
 - **Category:** Utility
 
 ### order_shipped (Utility)
@@ -82,7 +83,7 @@ SITE_URL=https://your-app.onrender.com
 |-------------|--------|
 | Twilio account | Create at twilio.com |
 | WhatsApp sender | Set `TWILIO_WHATSAPP_FROM` or `TWILIO_MESSAGING_SERVICE_SID` |
-| Order received template | Create in Content Template Builder, set `TWILIO_CONTENT_ORDER_RECEIVED` |
+| Order received template | Create Media template with {{1}}=name, {{2}}=order#, {{3}}=invoice URL; set `TWILIO_CONTENT_ORDER_RECEIVED` |
 | SITE_URL | Optional; set for invoice PDF links if you add them later |
 | Sandbox testing | Customer must join Twilio sandbox (send code to Twilio number) before they can receive messages |
 
