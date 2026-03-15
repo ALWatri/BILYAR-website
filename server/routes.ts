@@ -852,6 +852,7 @@ export async function registerRoutes(
   app.post("/api/orders/:id/confirm-zero", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      const baseUrl = getBaseUrl(req);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid order ID" });
       const order = await storage.getOrder(id);
       if (!order) return res.status(404).json({ message: "Order not found" });
@@ -866,6 +867,8 @@ export async function registerRoutes(
         await storage.updateOrder(id, { inventoryAdjusted: true } as any);
       }
       await applyDiscountUsageIfAny(id);
+      await ensurePublicInvoicePdf(id, baseUrl);
+      await sendOrderReceivedWhatsApp(id, baseUrl);
       sendAdminOrderNotification(id).catch((err) => console.error("Admin order email:", err));
       res.json({ confirmed: true, invoiceToken: signInvoiceId(id) });
     } catch (error: any) {
