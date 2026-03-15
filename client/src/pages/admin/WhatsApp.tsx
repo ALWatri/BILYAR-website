@@ -202,7 +202,7 @@ export default function WhatsApp() {
           <div>
             <h3 className="font-semibold text-amber-900 mb-1">WhatsApp not configured</h3>
             <p className="text-sm text-amber-800 mb-3">
-              Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM (or TWILIO_MESSAGING_SERVICE_SID). Create Content Templates in Twilio Console and set TWILIO_CONTENT_ORDER_RECEIVED (use new template SID HX… with {"{{1}}"}, {"{{2}}"}, {"{{3}}"}). To use old template ({"{{first_name}}"}), add WHATSAPP_ORDER_RECEIVED_LEGACY=1.
+              Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM (or TWILIO_MESSAGING_SERVICE_SID). Create Content Templates in Twilio Console and set TWILIO_CONTENT_ORDER_RECEIVED_MEDIA (use new template SID HX… with {"{{1}}"}, {"{{2}}"}, {"{{3}}"}). To use old template ({"{{first_name}}"}), keep TWILIO_CONTENT_ORDER_RECEIVED and add WHATSAPP_ORDER_RECEIVED_LEGACY=1.
             </p>
             <a
               href="https://www.twilio.com/docs/whatsapp/quickstart"

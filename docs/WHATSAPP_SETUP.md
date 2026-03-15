@@ -64,6 +64,9 @@ TWILIO_WHATSAPP_FROM=whatsapp:+96512345678
 # TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # New Media template ({{1}}, {{2}}, {{3}}): message + invoice in one send
+# Primary env:
+TWILIO_CONTENT_ORDER_RECEIVED_MEDIA=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Backward-compatible fallback:
 TWILIO_CONTENT_ORDER_RECEIVED=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # If you still have the old text-only template ({{first_name}}), use:
@@ -105,4 +108,4 @@ Automated WhatsApp messages are sent **by the server** when:
    - `order_received`: must have `{{first_name}}`
    - `order_shipped`: must have `{{1}}` and `{{2}}` (first name, order number)
    - `marketing`: must have `{{1}}` (message body)
-3. **Env vars** — Confirm `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_CONTENT_ORDER_RECEIVED`, and sender (`TWILIO_WHATSAPP_FROM` or `TWILIO_MESSAGING_SERVICE_SID`) are set and correct.
+3. **Env vars** — Confirm `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_CONTENT_ORDER_RECEIVED_MEDIA` (or `TWILIO_CONTENT_ORDER_RECEIVED`), and sender (`TWILIO_WHATSAPP_FROM` or `TWILIO_MESSAGING_SERVICE_SID`) are set and correct.

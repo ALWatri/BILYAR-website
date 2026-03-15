@@ -1226,6 +1226,8 @@ export async function registerRoutes(
   // ===== WHATSAPP (Twilio) =====
   const SITE_URL = process.env.SITE_URL || "";
   const TWILIO_CONTENT_ORDER_RECEIVED = process.env.TWILIO_CONTENT_ORDER_RECEIVED || "";
+  const TWILIO_CONTENT_ORDER_RECEIVED_MEDIA =
+    process.env.TWILIO_CONTENT_ORDER_RECEIVED_MEDIA || "HX0c427c701ac8de26dc15ed18e8686881";
   const TWILIO_CONTENT_ORDER_SHIPPED = process.env.TWILIO_CONTENT_ORDER_SHIPPED || "";
   const TWILIO_CONTENT_MARKETING = process.env.TWILIO_CONTENT_MARKETING || "";
   const USE_LEGACY_ORDER_RECEIVED = process.env.WHATSAPP_ORDER_RECEIVED_LEGACY === "1";
@@ -1291,10 +1293,6 @@ export async function registerRoutes(
       console.warn("WhatsApp skip: not configured (TWILIO_ACCOUNT_SID/AUTH_TOKEN missing)");
       return;
     }
-    if (!TWILIO_CONTENT_ORDER_RECEIVED) {
-      console.warn("WhatsApp skip: TWILIO_CONTENT_ORDER_RECEIVED not set");
-      return;
-    }
     const order = await storage.getOrder(orderId);
     if (!order || !order.customerPhone) {
       console.warn("WhatsApp skip: order not found or no customerPhone", { orderId, hasOrder: !!order });
@@ -1306,6 +1304,10 @@ export async function registerRoutes(
     const isPublicUrl = publicBase.startsWith("https://");
 
     if (USE_LEGACY_ORDER_RECEIVED) {
+      if (!TWILIO_CONTENT_ORDER_RECEIVED) {
+        console.warn("WhatsApp skip: TWILIO_CONTENT_ORDER_RECEIVED not set for legacy mode");
+        return;
+      }
       // Legacy: text template (first_name) + separate sendDocument for invoice
       console.log(`WhatsApp: sending order_received (legacy) to ${order.customerPhone}, template ${TWILIO_CONTENT_ORDER_RECEIVED}`);
       const templateRes = await sendTemplate(order.customerPhone, TWILIO_CONTENT_ORDER_RECEIVED, { first_name: firstName });
@@ -1331,6 +1333,11 @@ export async function registerRoutes(
     }
 
     // New Media template: {{1}}=name, {{2}}=orderNumber, {{3}}=invoice PDF URL
+    const mediaTemplateSid = TWILIO_CONTENT_ORDER_RECEIVED_MEDIA || TWILIO_CONTENT_ORDER_RECEIVED;
+    if (!mediaTemplateSid) {
+      console.warn("WhatsApp skip: no order_received Media template SID configured");
+      return;
+    }
     if (!isPublicUrl) {
       console.warn("WhatsApp skip: SITE_URL not set or not https; need public URL for invoice PDF in Media template");
       return;
@@ -1342,10 +1349,10 @@ export async function registerRoutes(
       return;
     }
 
-    console.log(`WhatsApp: sending order_received (Media template) to ${order.customerPhone}, template ${TWILIO_CONTENT_ORDER_RECEIVED}`);
+    console.log(`WhatsApp: sending order_received (Media template) to ${order.customerPhone}, template ${mediaTemplateSid}`);
     const templateRes = await sendTemplate(
       order.customerPhone,
-      TWILIO_CONTENT_ORDER_RECEIVED,
+      mediaTemplateSid,
       { "1": firstName, "2": order.orderNumber, "3": invoiceUrl }
     );
     if (!templateRes.ok) {
@@ -1369,11 +1376,14 @@ export async function registerRoutes(
   }
 
   app.get("/api/whatsapp/status", (_req, res) => {
+    const effectiveOrderReceivedSid = USE_LEGACY_ORDER_RECEIVED
+      ? TWILIO_CONTENT_ORDER_RECEIVED
+      : (TWILIO_CONTENT_ORDER_RECEIVED_MEDIA || TWILIO_CONTENT_ORDER_RECEIVED);
     res.json({
       configured: isWhatsAppConfigured(),
       orderReceivedLegacy: USE_LEGACY_ORDER_RECEIVED,
       contentSids: {
-        orderReceived: TWILIO_CONTENT_ORDER_RECEIVED || "(not set)",
+        orderReceived: effectiveOrderReceivedSid || "(not set)",
         orderShipped: TWILIO_CONTENT_ORDER_SHIPPED || "(not set)",
         marketing: TWILIO_CONTENT_MARKETING || "(not set)",
       },
