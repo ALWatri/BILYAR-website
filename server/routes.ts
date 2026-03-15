@@ -1255,7 +1255,7 @@ export async function registerRoutes(
       { first_name: firstName }
     );
     if (!templateRes.ok) {
-      console.error("WhatsApp order_received template:", templateRes.error);
+      console.error("WhatsApp order_received template failed:", templateRes.error, "- check TWILIO_CONTENT_ORDER_RECEIVED SID and template variable names (e.g. first_name vs 1)");
       return;
     }
 

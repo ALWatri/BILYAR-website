@@ -85,3 +85,18 @@ SITE_URL=https://your-app.onrender.com
 | Order received template | Create in Content Template Builder, set `TWILIO_CONTENT_ORDER_RECEIVED` |
 | SITE_URL | Optional; set for invoice PDF links if you add them later |
 | Sandbox testing | Customer must join Twilio sandbox (send code to Twilio number) before they can receive messages |
+
+## Automated messages (no admin login)
+
+Automated WhatsApp messages are sent **by the server** when:
+- Payment succeeds → order received + invoice PDF
+- Order status → Shipped → order shipped notification
+
+**Admin login does not affect automated messages.** If messages don’t appear in Twilio logs:
+
+1. **Check server logs** for `WhatsApp:` or `WhatsApp skip:` — these show why messages weren’t sent.
+2. **Template variables** — Ensure your Content Template variable names match:
+   - `order_received`: must have `{{first_name}}`
+   - `order_shipped`: must have `{{1}}` and `{{2}}` (first name, order number)
+   - `marketing`: must have `{{1}}` (message body)
+3. **Env vars** — Confirm `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_CONTENT_ORDER_RECEIVED`, and sender (`TWILIO_WHATSAPP_FROM` or `TWILIO_MESSAGING_SERVICE_SID`) are set and correct.

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { getAdminHeaders } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { translateError } from "@/lib/translations";
 
@@ -44,15 +45,27 @@ export default function WhatsApp() {
     queryKey: ["/api/whatsapp/status"],
   });
 
-  const { data: customers = [] } = useQuery<Customer[]>({
-    queryKey: ["/api/customers"],
+  const { data: customersData } = useQuery<{ customers: Customer[]; unauthorized?: boolean }>({
+    queryKey: ["/api/customers", "whatsapp"],
+    queryFn: async () => {
+      const res = await fetch("/api/customers", {
+        credentials: "include",
+        headers: getAdminHeaders(),
+      });
+      if (res.status === 401) return { customers: [], unauthorized: true };
+      if (!res.ok) throw new Error(await res.text().catch(() => "Failed"));
+      const customers = await res.json();
+      return { customers: Array.isArray(customers) ? customers : [], unauthorized: false };
+    },
   });
+  const customers = customersData?.customers ?? [];
+  const needsLogin = customersData?.unauthorized === true;
 
   const sendMarketingMutation = useMutation({
     mutationFn: async (payload: { phones: string[]; message: string }) => {
       const res = await fetch("/api/whatsapp/send-marketing", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAdminHeaders() },
         body: JSON.stringify(payload),
         credentials: "include",
       });
@@ -76,7 +89,7 @@ export default function WhatsApp() {
     mutationFn: async (orderIdOrNumber: string | number) => {
       const res = await fetch("/api/whatsapp/send-order-received", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAdminHeaders() },
         body: JSON.stringify({ orderId: String(orderIdOrNumber).trim() }),
         credentials: "include",
       });
@@ -99,7 +112,7 @@ export default function WhatsApp() {
     mutationFn: async (orderIdOrNumber: string | number) => {
       const res = await fetch("/api/whatsapp/send-order-shipped", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAdminHeaders() },
         body: JSON.stringify({ orderId: String(orderIdOrNumber).trim() }),
         credentials: "include",
       });
@@ -155,7 +168,32 @@ export default function WhatsApp() {
         <p className="text-gray-500">
           {isRtl ? "إرسال إشعارات الطلبات والتسويق عبر واتساب." : "Send order notifications and marketing via WhatsApp."}
         </p>
+        <p className="text-sm text-gray-400 mt-1">
+          {isRtl ? "الرسائل التلقائية تُرسل من الخادم عند الدفع ولا تحتاج تسجيل دخول." : "Automated messages are sent by the server on payment — no admin login required."}
+        </p>
       </div>
+
+      {needsLogin && (
+        <div className="mb-8 p-6 bg-amber-50 border border-amber-200 rounded-sm flex items-start gap-3">
+          <AlertCircle className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-amber-900 mb-1">
+              {isRtl ? "تسجيل الدخول مطلوب" : "Log in required"}
+            </h3>
+            <p className="text-sm text-amber-800 mb-3">
+              {isRtl
+                ? "سجّلي الدخول إلى لوحة الإدارة لاستخدام إعادة الإرسال اليدوية والتسويق."
+                : "Log in to the admin dashboard to use manual resend and marketing."}
+            </p>
+            <a
+              href="/admin/login"
+              className="text-sm font-medium text-amber-700 hover:underline"
+            >
+              {isRtl ? "تسجيل الدخول ←" : "Go to login →"}
+            </a>
+          </div>
+        </div>
+      )}
 
       {!status.configured && (
         <div className="mb-8 p-6 bg-amber-50 border border-amber-200 rounded-sm flex items-start gap-3">
