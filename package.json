@@ -10,7 +10,7 @@
     "postinstall": "npx puppeteer browsers install chrome 2>/dev/null || true",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
-    "db:push": "drizzle-kit push",
+    "db:push": "npx drizzle-kit push",
     "seed": "npx tsx scripts/seed.ts",
     "seed:firestore": "npx tsx scripts/seed-firestore.ts"
   },
