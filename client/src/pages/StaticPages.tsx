@@ -25,17 +25,16 @@ export function About() {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <div className="pt-32 pb-12 container mx-auto px-6 max-w-4xl text-center">
-        <h1 className="text-4xl md:text-6xl font-serif mb-8">{t.heritage_title}</h1>
-        <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-          {t.heritage_p1}
-        </p>
+        <h1 className="text-4xl md:text-6xl font-serif mb-8">{t.story_title}</h1>
         <div className="aspect-video bg-secondary/20 w-full mb-12">
-            <img src="/images/hero-fashion.png" className="w-full h-full object-cover" alt="Atelier" />
+            <img src="/images/our-story.png" className="w-full h-full object-cover object-top" alt="BILYAR Our Story" />
         </div>
         <div className={cn("text-lg text-muted-foreground leading-relaxed", isRtl ? "text-right" : "text-left")}>
-          <p>
-            {t.heritage_p2}
-          </p>
+          {(t.story_paragraphs || []).map((p, idx) => (
+            <p key={idx} className={cn(idx === 0 ? "" : "mt-6", p.startsWith("*") ? "italic text-foreground/80" : "")}>
+              {p.startsWith("*") ? p.replace(/^\*+|\*+$/g, "") : p}
+            </p>
+          ))}
         </div>
       </div>
       <Footer />
