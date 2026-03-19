@@ -166,7 +166,7 @@ export const translations = {
         "And in that moment — she chooses BILYAR."
       ],
       contact_title: "Contact Us",
-      contact_desc: "Send us a message and we’ll get back to you shortly.",
+      contact_desc: "Reach us anytime — we’ll get back to you shortly.",
       first_name: "First Name",
       last_name: "Last Name",
       email: "Email",
@@ -520,7 +520,7 @@ export const translations = {
         "وفي تلك اللحظة… تختار بِليار."
       ],
       contact_title: "اتصل بنا",
-      contact_desc: "أرسلي لنا رسالة وسنعود إليكِ قريبًا.",
+      contact_desc: "تواصلي معنا في أي وقت — وسنعود إليكِ قريبًا.",
       first_name: "الاسم الأول",
       last_name: "الاسم الأخير",
       email: "البريد الإلكتروني",
