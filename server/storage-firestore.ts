@@ -39,6 +39,7 @@ function toProduct(doc: DocumentSnapshot): Product {
     name: d.name,
     nameAr: d.nameAr,
     price: d.price,
+    cost: d.cost ?? 0,
     category: d.category,
     categoryAr: d.categoryAr,
     images: d.images ?? [],
@@ -119,6 +120,7 @@ function toOrderItem(doc: DocumentSnapshot): OrderItem {
     productName: d.productName,
     quantity: d.quantity ?? 1,
     price: d.price,
+    unitCost: d.unitCost ?? 0,
     image: d.image,
     variant: d.variant ?? null,
     size: d.size ?? null,
@@ -138,6 +140,7 @@ function toSettings(doc: DocumentSnapshot): Settings {
     currency: d.currency ?? "KWD",
     freeShippingThreshold: d.freeShippingThreshold ?? 90,
     defaultShippingCost: d.defaultShippingCost ?? 5,
+    deliveryFeePaidPerOrder: d.deliveryFeePaidPerOrder ?? 0,
   };
 }
 

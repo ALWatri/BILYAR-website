@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { setAdminToken } from "@/lib/queryClient";
-import { LayoutDashboard, ShoppingBag, Package, Settings, LogOut, Globe, Users, Tags, Layers, MessageCircle, Menu, Tag } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, Package, Settings, LogOut, Globe, Users, Tags, Layers, MessageCircle, Menu, Tag, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { translations } from "@/lib/translations";
@@ -54,6 +54,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { href: "/admin/collections", label: t.collections, icon: Layers },
     { href: "/admin/customers", label: t.customers, icon: Users },
     { href: "/admin/discounts", label: t.discounts, icon: Tag },
+    { href: "/admin/accounting", label: "Accounting", icon: BarChart3 },
     { href: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle },
     { href: "/admin/settings", label: t.settings, icon: Settings },
   ];

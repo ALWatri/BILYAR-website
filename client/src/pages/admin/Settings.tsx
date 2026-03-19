@@ -18,6 +18,7 @@ interface StoreSettingsResp {
   currency: string;
   freeShippingThreshold: number;
   defaultShippingCost: number;
+  deliveryFeePaidPerOrder?: number;
 }
 
 export default function Settings() {
@@ -50,6 +51,7 @@ export default function Settings() {
     currency: "KWD",
     freeShippingThreshold: "90",
     defaultShippingCost: "5",
+    deliveryFeePaidPerOrder: "0",
   });
 
   useEffect(() => {
@@ -61,6 +63,7 @@ export default function Settings() {
         currency: savedSettings.currency,
         freeShippingThreshold: String(savedSettings.freeShippingThreshold),
         defaultShippingCost: String(savedSettings.defaultShippingCost),
+        deliveryFeePaidPerOrder: String(savedSettings.deliveryFeePaidPerOrder ?? 0),
       });
     }
   }, [savedSettings]);
@@ -95,6 +98,7 @@ export default function Settings() {
       currency: storeSettings.currency,
       freeShippingThreshold: parseFloat(storeSettings.freeShippingThreshold) || 90,
       defaultShippingCost: parseFloat(storeSettings.defaultShippingCost) || 5,
+      deliveryFeePaidPerOrder: parseFloat(storeSettings.deliveryFeePaidPerOrder) || 0,
     });
   };
 
@@ -242,6 +246,21 @@ export default function Settings() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {isRtl ? "يُطبَّق عندما يكون عدد القطع أقل من ٢." : "Applied when fewer than 2 items in cart."}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>{isRtl ? "تكلفة التوصيل المدفوعة لكل طلب" : "Delivery fee paid per order"}</Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={storeSettings.deliveryFeePaidPerOrder}
+                    onChange={e => setStoreSettings(s => ({ ...s, deliveryFeePaidPerOrder: e.target.value }))}
+                    className="rounded-none pr-16"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">{translations[lang].currency}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {isRtl ? "يُستخدم لحساب إجمالي تكلفة التوصيل المدفوعة في صفحة المحاسبة." : "Used to calculate total delivery fees paid in Accounting."}
                 </p>
               </div>
             </div>

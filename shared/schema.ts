@@ -8,6 +8,7 @@ export const products = pgTable("products", {
   name: text("name").notNull(),
   nameAr: text("name_ar").notNull(),
   price: real("price").notNull(),
+  cost: real("cost").notNull().default(0),
   category: text("category").notNull(),
   categoryAr: text("category_ar").notNull(),
   images: text("images").array().notNull(),
@@ -76,6 +77,7 @@ export const orderItems = pgTable("order_items", {
   productName: text("product_name").notNull(),
   quantity: integer("quantity").notNull().default(1),
   price: real("price").notNull(),
+  unitCost: real("unit_cost").notNull().default(0),
   image: text("image").notNull(),
   variant: text("variant"), // "set" | "top" (optional)
   size: text("size"),
@@ -92,6 +94,7 @@ export const settings = pgTable("settings", {
   currency: text("currency").notNull().default("KWD"),
   freeShippingThreshold: real("free_shipping_threshold").notNull().default(90),
   defaultShippingCost: real("default_shipping_cost").notNull().default(5),
+  deliveryFeePaidPerOrder: real("delivery_fee_paid_per_order").notNull().default(0),
 });
 
 export const discounts = pgTable("discounts", {

@@ -204,6 +204,7 @@ export class DatabaseStorage implements IStorage {
       currency: data.currency ?? existing?.currency ?? "KWD",
       freeShippingThreshold: data.freeShippingThreshold ?? existing?.freeShippingThreshold ?? 90,
       defaultShippingCost: data.defaultShippingCost ?? existing?.defaultShippingCost ?? 5,
+      deliveryFeePaidPerOrder: data.deliveryFeePaidPerOrder ?? (existing as any)?.deliveryFeePaidPerOrder ?? 0,
     };
     if (existing) {
       const [updated] = await db.update(settings).set(payload).where(eq(settings.id, existing.id)).returning();

@@ -298,6 +298,7 @@ export async function registerRoutes(
     description: z.string().min(1),
     descriptionAr: z.string().min(1),
     price: z.number().positive(),
+    cost: z.number().min(0).optional().default(0),
     category: z.string().min(1),
     categoryAr: z.string().min(1),
     images: z.array(z.string()).min(1),
@@ -773,12 +774,14 @@ export async function registerRoutes(
           const v = (item as any).variant as ("set" | "top" | undefined);
           const topPrice = (p as any).topPrice as number | null | undefined;
           const price = v === "top" && typeof topPrice === "number" ? topPrice : p.price;
+          const unitCost = Number((p as any).cost) || 0;
           return {
             orderId: 0,
             productId: item.productId,
             productName: item.productName || p.name,
             quantity: item.quantity,
             price,
+            unitCost,
             image: p.images?.[0] || item.image,
             variant: v ?? null,
             size: item.size || null,
@@ -1119,6 +1122,7 @@ export async function registerRoutes(
         currency: "KWD",
         freeShippingThreshold: 90,
         defaultShippingCost: 5,
+        deliveryFeePaidPerOrder: 0,
       });
     }
     res.json(s);
@@ -1131,6 +1135,7 @@ export async function registerRoutes(
     currency: z.string().optional(),
     freeShippingThreshold: z.number().min(0).optional(),
     defaultShippingCost: z.number().min(0).optional(),
+    deliveryFeePaidPerOrder: z.number().min(0).optional(),
   });
 
   app.patch("/api/settings", requireAdmin, async (req, res) => {
@@ -1443,6 +1448,64 @@ export async function registerRoutes(
     if (!order) return res.status(404).json({ message: "Order not found" });
     await sendOrderShippedWhatsApp(id);
     res.json({ sent: true });
+  });
+
+  // ===== ACCOUNTING (Admin) =====
+  app.get("/api/accounting/summary", requireAdmin, async (_req, res) => {
+    const paidStatuses = new Set(["Paid", "Processing", "Shipped", "Delivered"]);
+    const all = await storage.getOrders();
+    const paid = all.filter((o) => paidStatuses.has(o.status || ""));
+    const revenue = paid.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const deliveryFeesCollected = paid.reduce((sum, o) => sum + (Number(o.shippingCost) || 0), 0);
+    const discountsGiven = paid.reduce((sum, o) => sum + (Number((o as any).discountAmount) || 0), 0);
+    const totalOrders = paid.length;
+    const totalItemsSold = paid.reduce((sum, o) => sum + (o.items || []).reduce((s2, it) => s2 + (Number(it.quantity) || 0), 0), 0);
+    const cost = paid.reduce((sum, o) => sum + (o.items || []).reduce((s2, it) => s2 + (Number((it as any).unitCost) || 0) * (Number(it.quantity) || 0), 0), 0);
+    const s = await storage.getSettings();
+    const paidPerOrder = Number((s as any)?.deliveryFeePaidPerOrder) || 0;
+    const deliveryFeesPaid = totalOrders * paidPerOrder;
+    const netProfit = revenue - cost;
+    const profitAfterDelivery = netProfit + deliveryFeesCollected - deliveryFeesPaid;
+    const grossMarginPct = revenue > 0 ? (netProfit / revenue) * 100 : 0;
+    const averageItemsPerOrder = totalOrders > 0 ? totalItemsSold / totalOrders : 0;
+    const averageOrderValue = totalOrders > 0 ? revenue / totalOrders : 0;
+
+    const byProduct = new Map<number, { productId: number; name: string; revenue: number; cost: number; profit: number; qty: number }>();
+    for (const o of paid) {
+      for (const it of o.items || []) {
+        const id = Number(it.productId) || 0;
+        if (!id) continue;
+        const qty = Number(it.quantity) || 0;
+        const rev = (Number(it.price) || 0) * qty;
+        const cogs = (Number((it as any).unitCost) || 0) * qty;
+        const row = byProduct.get(id) || { productId: id, name: String(it.productName || ""), revenue: 0, cost: 0, profit: 0, qty: 0 };
+        row.revenue += rev;
+        row.cost += cogs;
+        row.profit += (rev - cogs);
+        row.qty += qty;
+        if (!row.name) row.name = String(it.productName || "");
+        byProduct.set(id, row);
+      }
+    }
+    const topProductsByProfit = Array.from(byProduct.values())
+      .sort((a, b) => b.profit - a.profit)
+      .slice(0, 10);
+
+    res.json({
+      revenue,
+      cost,
+      netProfit,
+      grossMarginPct,
+      profitAfterDelivery,
+      discountsGiven,
+      deliveryFeesCollected,
+      deliveryFeesPaid,
+      totalOrders,
+      averageItemsPerOrder,
+      averageOrderValue,
+      totalItemsSold,
+      topProductsByProfit,
+    });
   });
 
   // ===== PAYMENT STATUS CHECK =====

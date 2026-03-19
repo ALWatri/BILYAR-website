@@ -41,6 +41,7 @@ const emptyForm = () => ({
   description: "",
   descriptionAr: "",
   price: "",
+  cost: "",
   category: "",
   categoryAr: "",
   category2: "",
@@ -79,6 +80,7 @@ function productToForm(p: Product) {
     description: p.description,
     descriptionAr: p.descriptionAr,
     price: String(p.price),
+    cost: String((p as Product & { cost?: number | null }).cost ?? 0),
     category: p.category,
     categoryAr: p.categoryAr,
     category2: ext.category2 ?? "",
@@ -165,6 +167,7 @@ export default function Products() {
           description: payload.description,
           descriptionAr: payload.descriptionAr,
           price: parseFloat(payload.price) || 0,
+          cost: payload.cost ? Math.max(0, parseFloat(payload.cost)) : 0,
           category: payload.category,
           categoryAr: payload.categoryAr,
           images,
@@ -211,6 +214,7 @@ export default function Products() {
           description: payload.description,
           descriptionAr: payload.descriptionAr,
           price: parseFloat(payload.price) || 0,
+          cost: payload.cost ? Math.max(0, parseFloat(payload.cost)) : 0,
           category: payload.category,
           categoryAr: payload.categoryAr,
           images,
@@ -393,6 +397,10 @@ export default function Products() {
               <div className="space-y-2">
                 <Label>{t.price} ({translations[lang].currency})</Label>
                 <Input type="number" step="0.001" min="0" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} className="rounded-none" required />
+              </div>
+              <div className="space-y-2">
+                <Label>Cost ({translations[lang].currency})</Label>
+                <Input type="number" step="0.001" min="0" value={form.cost} onChange={(e) => setForm((f) => ({ ...f, cost: e.target.value }))} className="rounded-none" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
