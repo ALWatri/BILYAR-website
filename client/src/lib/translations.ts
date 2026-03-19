@@ -166,7 +166,7 @@ export const translations = {
         "And in that moment — she chooses BILYAR."
       ],
       contact_title: "Contact Us",
-      contact_desc: "Our concierge team is available Monday through Friday, 9am to 6pm EST.",
+      contact_desc: "Send us a message and we’ll get back to you shortly.",
       first_name: "First Name",
       last_name: "Last Name",
       email: "Email",
@@ -520,7 +520,7 @@ export const translations = {
         "وفي تلك اللحظة… تختار بِليار."
       ],
       contact_title: "اتصل بنا",
-      contact_desc: "",
+      contact_desc: "أرسلي لنا رسالة وسنعود إليكِ قريبًا.",
       first_name: "الاسم الأول",
       last_name: "الاسم الأخير",
       email: "البريد الإلكتروني",
