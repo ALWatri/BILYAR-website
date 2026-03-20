@@ -2,7 +2,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import { eq, desc, or, ilike } from "drizzle-orm";
 import {
-  products, categories, collections, orders, orderItems, settings, discounts,
+  products, categories, collections, orders, orderItems, settings, discounts, deliveryExpenses,
   type Product, type InsertProduct,
   type Category, type InsertCategory,
   type Collection, type InsertCollection,
@@ -10,6 +10,7 @@ import {
   type OrderItem, type InsertOrderItem,
   type Settings,
   type Discount, type InsertDiscount,
+  type DeliveryExpense, type InsertDeliveryExpense,
 } from "@shared/schema";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
@@ -49,6 +50,10 @@ export interface IStorage {
   updateDiscount(id: number, data: Partial<InsertDiscount>): Promise<Discount | undefined>;
   deleteDiscount(id: number): Promise<boolean>;
   incrementDiscountUsage(id: number): Promise<void>;
+
+  getDeliveryExpenses(): Promise<DeliveryExpense[]>;
+  createDeliveryExpense(data: { periodStart: string; periodEnd: string; amount: number; note?: string }): Promise<DeliveryExpense>;
+  deleteDeliveryExpense(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -245,5 +250,24 @@ export class DatabaseStorage implements IStorage {
   async incrementDiscountUsage(id: number): Promise<void> {
     const [d] = await db.select().from(discounts).where(eq(discounts.id, id));
     if (d) await db.update(discounts).set({ usedCount: (d.usedCount ?? 0) + 1 }).where(eq(discounts.id, id));
+  }
+
+  async getDeliveryExpenses(): Promise<DeliveryExpense[]> {
+    return db.select().from(deliveryExpenses).orderBy(desc(deliveryExpenses.id));
+  }
+
+  async createDeliveryExpense(data: { periodStart: string; periodEnd: string; amount: number; note?: string }): Promise<DeliveryExpense> {
+    const [created] = await db.insert(deliveryExpenses).values({
+      periodStart: data.periodStart,
+      periodEnd: data.periodEnd,
+      amount: data.amount,
+      note: data.note ?? null,
+    }).returning();
+    return created!;
+  }
+
+  async deleteDeliveryExpense(id: number): Promise<boolean> {
+    const result = await db.delete(deliveryExpenses).where(eq(deliveryExpenses.id, id)).returning({ id: deliveryExpenses.id });
+    return result.length > 0;
   }
 }

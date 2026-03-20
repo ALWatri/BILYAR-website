@@ -10,6 +10,7 @@ import { translations, translateError } from "@/lib/translations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Settings as SettingsIcon, CreditCard, Truck, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface StoreSettingsResp {
   storeName: string;
@@ -73,12 +74,7 @@ export default function Settings() {
 
   const saveMutation = useMutation({
     mutationFn: async (payload: StoreSettingsResp) => {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Failed to save");
+      const res = await apiRequest("PATCH", "/api/settings", payload);
       return res.json();
     },
     onSuccess: () => {

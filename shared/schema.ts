@@ -97,6 +97,18 @@ export const settings = pgTable("settings", {
   deliveryFeePaidPerOrder: real("delivery_fee_paid_per_order").notNull().default(0),
 });
 
+export const deliveryExpenses = pgTable("delivery_expenses", {
+  id: serial("id").primaryKey(),
+  periodStart: text("period_start").notNull(),
+  periodEnd: text("period_end").notNull(),
+  amount: real("amount").notNull(),
+  note: text("note"),
+  createdAt: text("created_at").notNull().default(sql`to_char(now(), 'YYYY-MM-DD')`),
+});
+
+export type DeliveryExpense = typeof deliveryExpenses.$inferSelect;
+export type InsertDeliveryExpense = typeof deliveryExpenses.$inferInsert;
+
 export const discounts = pgTable("discounts", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(),

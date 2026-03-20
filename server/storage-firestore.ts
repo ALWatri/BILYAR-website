@@ -25,7 +25,17 @@ const COLL = {
   settings: "settings",
   counters: "counters",
   discounts: "discounts",
+  deliveryExpenses: "delivery_expenses",
 } as const;
+
+export type DeliveryExpense = {
+  id: number;
+  periodStart: string;
+  periodEnd: string;
+  amount: number;
+  note: string | null;
+  createdAt: string;
+};
 
 function getDb() {
   initFirebase();
@@ -106,7 +116,7 @@ function toOrder(doc: DocumentSnapshot): Order {
     shippingCost: d.shippingCost ?? 0,
     discountCode: d.discountCode ?? null,
     discountAmount: d.discountAmount ?? null,
-    invoicePublicUrl: (d as Record<string, unknown>).invoicePublicUrl ?? null,
+    invoicePublicUrl: typeof (d as any).invoicePublicUrl === "string" ? (d as any).invoicePublicUrl : null,
     createdAt: d.createdAt ?? new Date().toISOString().slice(0, 10),
   };
 }
@@ -160,12 +170,12 @@ function toDiscount(doc: DocumentSnapshot): Discount {
   };
 }
 
-async function nextId(collection: "products" | "categories" | "collections" | "orders" | "orderItems" | "discounts"): Promise<number> {
+async function nextId(collection: "products" | "categories" | "collections" | "orders" | "orderItems" | "discounts" | "deliveryExpenses"): Promise<number> {
   const db = getDb();
   const ref = db.collection(COLL.counters).doc("next");
   const result = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    const data = snap.data() ?? { products: 0, categories: 0, collections: 0, orders: 0, orderItems: 0, discounts: 0 };
+    const data = snap.data() ?? { products: 0, categories: 0, collections: 0, orders: 0, orderItems: 0, discounts: 0, deliveryExpenses: 0 };
     const key = collection === "orderItems" ? "orderItems" : collection;
     const next = (data[key] ?? 0) + 1;
     tx.set(ref, { ...data, [key]: next });
@@ -208,6 +218,10 @@ export interface IStorage {
   updateDiscount(id: number, data: Partial<InsertDiscount>): Promise<Discount | undefined>;
   deleteDiscount(id: number): Promise<boolean>;
   incrementDiscountUsage(id: number): Promise<void>;
+
+  getDeliveryExpenses(): Promise<DeliveryExpense[]>;
+  createDeliveryExpense(data: { periodStart: string; periodEnd: string; amount: number; note?: string }): Promise<DeliveryExpense>;
+  deleteDeliveryExpense(id: number): Promise<boolean>;
 }
 
 export class FirestoreStorage implements IStorage {
@@ -433,6 +447,7 @@ export class FirestoreStorage implements IStorage {
       const itemId = await nextId("orderItems");
       const item = itemsData[i];
       const itemData = item as InsertOrderItem & { notesEn?: string | null };
+      const unitCost = Number((itemData as any).unitCost) || 0;
       await db.collection(COLL.orderItems).doc(String(itemId)).set({
         id: itemId,
         orderId,
@@ -440,6 +455,7 @@ export class FirestoreStorage implements IStorage {
         productName: item.productName,
         quantity: item.quantity ?? 1,
         price: item.price,
+        unitCost,
         image: item.image,
         variant: (item as InsertOrderItem & { variant?: string | null }).variant ?? null,
         size: item.size ?? null,
@@ -454,6 +470,7 @@ export class FirestoreStorage implements IStorage {
         productName: item.productName,
         quantity: item.quantity ?? 1,
         price: item.price,
+        unitCost,
         image: item.image,
         variant: (item as InsertOrderItem & { variant?: string | null }).variant ?? null,
         size: item.size ?? null,
@@ -479,6 +496,7 @@ export class FirestoreStorage implements IStorage {
       const newItems: OrderItem[] = [];
       for (const item of items) {
         const itemId = await nextId("orderItems");
+        const unitCost = Number((item as any).unitCost) || 0;
         await db.collection(COLL.orderItems).doc(String(itemId)).set({
           id: itemId,
           orderId: id,
@@ -486,6 +504,7 @@ export class FirestoreStorage implements IStorage {
           productName: item.productName,
           quantity: item.quantity ?? 1,
           price: item.price,
+          unitCost,
           image: item.image,
           variant: (item as InsertOrderItem & { variant?: string | null }).variant ?? null,
           size: item.size ?? null,
@@ -500,6 +519,7 @@ export class FirestoreStorage implements IStorage {
           productName: item.productName,
           quantity: item.quantity ?? 1,
           price: item.price,
+          unitCost,
           image: item.image,
           variant: (item as InsertOrderItem & { variant?: string | null }).variant ?? null,
           size: item.size ?? null,
@@ -631,5 +651,46 @@ export class FirestoreStorage implements IStorage {
     if (!snap.exists) return;
     const current = (snap.data()?.usedCount ?? 0) + 1;
     await ref.update({ usedCount: current });
+  }
+
+  async getDeliveryExpenses(): Promise<DeliveryExpense[]> {
+    const db = getDb();
+    const snap = await db.collection(COLL.deliveryExpenses).orderBy("id", "desc").get();
+    return snap.docs.map((doc) => {
+      const d = doc.data()!;
+      return {
+        id: d.id,
+        periodStart: d.periodStart,
+        periodEnd: d.periodEnd,
+        amount: d.amount ?? 0,
+        note: d.note ?? null,
+        createdAt: d.createdAt ?? "",
+      } as DeliveryExpense;
+    });
+  }
+
+  async createDeliveryExpense(data: { periodStart: string; periodEnd: string; amount: number; note?: string }): Promise<DeliveryExpense> {
+    const db = getDb();
+    const id = await nextId("deliveryExpenses");
+    const createdAt = new Date().toISOString().slice(0, 10);
+    const doc = {
+      id,
+      periodStart: data.periodStart,
+      periodEnd: data.periodEnd,
+      amount: data.amount,
+      note: data.note ?? null,
+      createdAt,
+    };
+    await db.collection(COLL.deliveryExpenses).doc(String(id)).set(doc);
+    return doc as DeliveryExpense;
+  }
+
+  async deleteDeliveryExpense(id: number): Promise<boolean> {
+    const db = getDb();
+    const ref = db.collection(COLL.deliveryExpenses).doc(String(id));
+    const snap = await ref.get();
+    if (!snap.exists) return false;
+    await ref.delete();
+    return true;
   }
 }

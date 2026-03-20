@@ -3,8 +3,13 @@ import { AdminLayout } from "./AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { translations } from "@/lib/translations";
-import { useQuery } from "@tanstack/react-query";
-import { BarChart3, Package, Truck, TrendingUp } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { BarChart3, Package, Truck, TrendingUp, Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 type TopProduct = {
   productId: number;
@@ -15,6 +20,15 @@ type TopProduct = {
   qty: number;
 };
 
+type DeliveryExpense = {
+  id: number;
+  periodStart: string;
+  periodEnd: string;
+  amount: number;
+  note: string | null;
+  createdAt: string;
+};
+
 type Summary = {
   revenue: number;
   cost: number;
@@ -23,7 +37,7 @@ type Summary = {
   profitAfterDelivery: number;
   discountsGiven: number;
   deliveryFeesCollected: number;
-  deliveryFeesPaid: number;
+  deliveryExpensesDeclared: number;
   totalOrders: number;
   averageItemsPerOrder: number;
   averageOrderValue: number;
@@ -67,13 +81,50 @@ export default function Accounting() {
     profitAfterDelivery: data?.profitAfterDelivery ?? 0,
     discountsGiven: data?.discountsGiven ?? 0,
     deliveryFeesCollected: data?.deliveryFeesCollected ?? 0,
-    deliveryFeesPaid: data?.deliveryFeesPaid ?? 0,
+    deliveryExpensesDeclared: data?.deliveryExpensesDeclared ?? 0,
     totalOrders: data?.totalOrders ?? 0,
     averageItemsPerOrder: data?.averageItemsPerOrder ?? 0,
     averageOrderValue: data?.averageOrderValue ?? 0,
     totalItemsSold: data?.totalItemsSold ?? 0,
     topProductsByProfit: data?.topProductsByProfit ?? [],
   }), [data]);
+
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { data: expenses = [] } = useQuery<DeliveryExpense[]>({ queryKey: ["/api/delivery-expenses"] });
+
+  const [form, setForm] = useState({ periodStart: "", periodEnd: "", amount: "", note: "" });
+  const addMutation = useMutation({
+    mutationFn: async () => {
+      const amount = parseFloat(form.amount);
+      if (!form.periodStart || !form.periodEnd || isNaN(amount) || amount < 0) {
+        throw new Error(isRtl ? "يرجى إدخال الفترة والمبلغ" : "Please enter period and amount");
+      }
+      await apiRequest("POST", "/api/delivery-expenses", {
+        periodStart: form.periodStart,
+        periodEnd: form.periodEnd,
+        amount,
+        note: form.note.trim() || undefined,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/delivery-expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/accounting/summary"] });
+      setForm({ periodStart: "", periodEnd: "", amount: "", note: "" });
+      toast({ title: isRtl ? "تمت الإضافة" : "Added" });
+    },
+    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/delivery-expenses/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/delivery-expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/accounting/summary"] });
+      toast({ title: isRtl ? "تم الحذف" : "Deleted" });
+    },
+  });
 
   return (
     <AdminLayout>
@@ -142,11 +193,11 @@ export default function Accounting() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Truck className="h-5 w-5 text-primary" />
-              {isRtl ? "رسوم التوصيل المدفوعة" : "Delivery fees paid"}
+              {isRtl ? "تكاليف التوصيل المُعلنة" : "Delivery expenses (declared)"}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">
-            {fmt(s.deliveryFeesPaid)} <span className="text-base font-normal text-muted-foreground">{currency}</span>
+            {fmt(s.deliveryExpensesDeclared)} <span className="text-base font-normal text-muted-foreground">{currency}</span>
           </CardContent>
         </Card>
 
@@ -183,6 +234,88 @@ export default function Accounting() {
           </CardHeader>
           <CardContent className={cn("text-2xl font-semibold", s.profitAfterDelivery < 0 ? "text-red-600" : "text-emerald-700")}>
             {fmt(s.profitAfterDelivery)} <span className="text-base font-normal text-muted-foreground">{currency}</span>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <Card className="rounded-none border-gray-200 shadow-sm">
+          <CardHeader>
+            <CardTitle>{isRtl ? "إعلان تكاليف التوصيل حسب الفترة" : "Declare delivery expenses by period"}</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {isRtl ? "أضف التكلفة الإجمالية للتوصيل لفترة معينة (مثلاً أسبوع أو 5 أيام). تُخصم من صافي الربح." : "Add total delivery cost for a period (e.g. a week or 5 days). Deducted from net profit."}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className={cn("grid gap-4 sm:grid-cols-2 lg:grid-cols-5", isRtl && "text-right")} dir={isRtl ? "rtl" : "ltr"}>
+              <div className="space-y-2">
+                <Label>{isRtl ? "من تاريخ" : "From"}</Label>
+                <Input
+                  type="date"
+                  value={form.periodStart}
+                  onChange={(e) => setForm((f) => ({ ...f, periodStart: e.target.value }))}
+                  className="rounded-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{isRtl ? "إلى تاريخ" : "To"}</Label>
+                <Input
+                  type="date"
+                  value={form.periodEnd}
+                  onChange={(e) => setForm((f) => ({ ...f, periodEnd: e.target.value }))}
+                  className="rounded-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{isRtl ? "المبلغ" : "Amount"} ({currency})</Label>
+                <Input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  placeholder="60"
+                  value={form.amount}
+                  onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                  className="rounded-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{isRtl ? "ملاحظة" : "Note"} ({isRtl ? "اختياري" : "optional"})</Label>
+                <Input
+                  value={form.note}
+                  onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+                  placeholder={isRtl ? "مثال: أسبوع ١" : "e.g. Week 1"}
+                  className="rounded-none"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button
+                  className="rounded-none bg-primary text-white hover:bg-primary/90 gap-1"
+                  onClick={() => addMutation.mutate()}
+                  disabled={addMutation.isPending}
+                >
+                  <Plus className="h-4 w-4" />
+                  {addMutation.isPending ? "..." : isRtl ? "إضافة" : "Add"}
+                </Button>
+              </div>
+            </div>
+            {expenses.length > 0 && (
+              <div className="border-t border-gray-100 pt-4 mt-4">
+                <p className="text-sm font-medium mb-2">{isRtl ? "السجلات" : "Entries"}</p>
+                <div className="space-y-2">
+                  {expenses.map((e) => (
+                    <div key={e.id} className="flex items-center justify-between gap-4 py-2 border-b border-gray-50">
+                      <span className="text-sm">
+                        {e.periodStart} → {e.periodEnd}
+                        {e.note ? ` (${e.note})` : ""}: {fmt(e.amount)} {currency}
+                      </span>
+                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => deleteMutation.mutate(e.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

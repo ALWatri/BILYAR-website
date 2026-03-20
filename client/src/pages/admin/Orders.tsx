@@ -86,19 +86,11 @@ export default function Orders() {
 
   const createOrderMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customer: createForm.customer,
-          items: createForm.items.map((i) => ({ productId: i.productId, productName: i.productName, quantity: i.quantity, price: i.price, image: i.image, size: i.size })),
-          paymentMethod: "manual",
-        }),
+      const res = await apiRequest("POST", "/api/orders", {
+        customer: createForm.customer,
+        items: createForm.items.map((i) => ({ productId: i.productId, productName: i.productName, quantity: i.quantity, price: i.price, image: i.image, size: i.size })),
+        paymentMethod: "manual",
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Failed to create order");
-      }
       return res.json();
     },
     onSuccess: () => {
@@ -129,15 +121,7 @@ export default function Orders() {
   const updateOrderMutation = useMutation({
     mutationFn: async (payload: { id: number; customer: { name: string; email: string; phone: string; address: string; city: string; country: string }; items: { productId: number; productName: string; quantity: number; price: number; image: string; size?: string | null; measurements?: Record<string, string> | null; notes?: string | null }[] }) => {
       const { id, customer, items } = payload;
-      const res = await fetch(`/api/orders/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customer, items }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Failed to update order");
-      }
+      const res = await apiRequest("PATCH", `/api/orders/${id}`, { customer, items });
       return res.json();
     },
     onSuccess: () => {

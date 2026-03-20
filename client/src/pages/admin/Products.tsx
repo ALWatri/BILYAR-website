@@ -31,6 +31,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Category, Product } from "@/lib/data";
 import { Package, Pencil, Trash2, Upload, X, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, getAdminHeaders } from "@/lib/queryClient";
 
 
 const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "2XL", "One Size"];
@@ -118,7 +119,7 @@ export default function Products() {
     try {
       const formData = new FormData();
       for (let i = 0; i < files.length; i++) formData.append("images", files[i]);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const res = await fetch("/api/upload", { method: "POST", body: formData, credentials: "include", headers: getAdminHeaders() });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || "Upload failed");
@@ -158,10 +159,7 @@ export default function Products() {
     mutationFn: async (payload: typeof form) => {
       const images = payload.images.split("\n").map((s) => s.trim()).filter(Boolean);
       if (images.length === 0) throw new Error("At least one image URL required");
-      const res = await fetch("/api/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await apiRequest("POST", "/api/products", {
           name: payload.name,
           nameAr: payload.nameAr,
           description: payload.description,
@@ -183,12 +181,7 @@ export default function Products() {
             ? Object.fromEntries(payload.stockBySize.map((r) => [r.size, r.qty]))
             : null,
           outOfStock: payload.outOfStock,
-        }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Failed to create");
-      }
       return res.json();
     },
     onSuccess: () => {
@@ -205,10 +198,7 @@ export default function Products() {
     mutationFn: async ({ id, payload }: { id: number; payload: typeof form }) => {
       const images = payload.images.split("\n").map((s) => s.trim()).filter(Boolean);
       if (images.length === 0) throw new Error("At least one image URL required");
-      const res = await fetch(`/api/products/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await apiRequest("PATCH", `/api/products/${id}`, {
           name: payload.name,
           nameAr: payload.nameAr,
           description: payload.description,
@@ -230,12 +220,7 @@ export default function Products() {
             ? Object.fromEntries(payload.stockBySize.map((r) => [r.size, r.qty]))
             : null,
           outOfStock: payload.outOfStock,
-        }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Failed to update");
-      }
       return res.json();
     },
     onSuccess: () => {
@@ -250,8 +235,7 @@ export default function Products() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      await apiRequest("DELETE", `/api/products/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });

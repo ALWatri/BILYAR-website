@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Upload } from "lucide-react";
+import { apiRequest, getAdminHeaders } from "@/lib/queryClient";
 
 const emptyForm = () => ({
   title: "",
@@ -68,15 +69,7 @@ export default function Collections() {
 
   const createMutation = useMutation({
     mutationFn: async (payload: typeof form) => {
-      const res = await fetch("/api/collections", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Failed to create");
-      }
+      const res = await apiRequest("POST", "/api/collections", payload);
       return res.json();
     },
     onSuccess: () => {
@@ -90,15 +83,7 @@ export default function Collections() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, payload }: { id: number; payload: typeof form }) => {
-      const res = await fetch(`/api/collections/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Failed to update");
-      }
+      const res = await apiRequest("PATCH", `/api/collections/${id}`, payload);
       return res.json();
     },
     onSuccess: () => {
@@ -112,8 +97,7 @@ export default function Collections() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/collections/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      await apiRequest("DELETE", `/api/collections/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/collections"] });
@@ -153,7 +137,7 @@ export default function Collections() {
     try {
       const formData = new FormData();
       formData.append("images", files[0]);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const res = await fetch("/api/upload", { method: "POST", body: formData, credentials: "include", headers: getAdminHeaders() });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || "Upload failed");

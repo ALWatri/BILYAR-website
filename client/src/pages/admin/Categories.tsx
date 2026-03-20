@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 const emptyForm = () => ({
   name: "",
@@ -61,15 +62,7 @@ export default function Categories() {
 
   const createMutation = useMutation({
     mutationFn: async (payload: typeof form) => {
-      const res = await fetch("/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Failed to create");
-      }
+      const res = await apiRequest("POST", "/api/categories", payload);
       return res.json();
     },
     onSuccess: () => {
@@ -83,15 +76,7 @@ export default function Categories() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, payload }: { id: number; payload: typeof form }) => {
-      const res = await fetch(`/api/categories/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Failed to update");
-      }
+      const res = await apiRequest("PATCH", `/api/categories/${id}`, payload);
       return res.json();
     },
     onSuccess: () => {
@@ -105,8 +90,7 @@ export default function Categories() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      await apiRequest("DELETE", `/api/categories/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });

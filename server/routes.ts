@@ -266,8 +266,8 @@ export async function registerRoutes(
         return;
       }
       const items = order.items
-        .map((i: { productName: string; price: number; quantity: number; size?: string }) =>
-          `  - ${i.productName} (${i.size || "—"}) x${i.quantity} @ ${i.price.toFixed(3)} KWD`
+        .map((i) =>
+          `  - ${i.productName} (${i.size ?? "—"}) x${i.quantity} @ ${i.price.toFixed(3)} KWD`
         )
         .join("\n");
       const text =
@@ -1231,6 +1231,40 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  // ===== DELIVERY EXPENSES (period-based declarations) =====
+  const deliveryExpenseSchema = z.object({
+    periodStart: z.string().min(1, "Period start required"),
+    periodEnd: z.string().min(1, "Period end required"),
+    amount: z.number().min(0),
+    note: z.string().optional(),
+  });
+
+  app.get("/api/delivery-expenses", requireAdmin, async (_req, res) => {
+    const list = await storage.getDeliveryExpenses();
+    res.json(list);
+  });
+
+  app.post("/api/delivery-expenses", requireAdmin, async (req, res) => {
+    try {
+      const data = deliveryExpenseSchema.parse(req.body);
+      const created = await storage.createDeliveryExpense(data);
+      res.status(201).json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      throw error;
+    }
+  });
+
+  app.delete("/api/delivery-expenses/:id", requireAdmin, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+    const deleted = await storage.deleteDeliveryExpense(id);
+    if (!deleted) return res.status(404).json({ message: "Not found" });
+    res.status(204).send();
+  });
+
   // ===== WHATSAPP (Twilio) =====
   const SITE_URL = process.env.SITE_URL || "";
   const TWILIO_CONTENT_ORDER_RECEIVED = process.env.TWILIO_CONTENT_ORDER_RECEIVED || "";
@@ -1461,11 +1495,10 @@ export async function registerRoutes(
     const totalOrders = paid.length;
     const totalItemsSold = paid.reduce((sum, o) => sum + (o.items || []).reduce((s2, it) => s2 + (Number(it.quantity) || 0), 0), 0);
     const cost = paid.reduce((sum, o) => sum + (o.items || []).reduce((s2, it) => s2 + (Number((it as any).unitCost) || 0) * (Number(it.quantity) || 0), 0), 0);
-    const s = await storage.getSettings();
-    const paidPerOrder = Number((s as any)?.deliveryFeePaidPerOrder) || 0;
-    const deliveryFeesPaid = totalOrders * paidPerOrder;
+    const deliveryExpensesList = await storage.getDeliveryExpenses();
+    const deliveryExpensesDeclared = deliveryExpensesList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const netProfit = revenue - cost;
-    const profitAfterDelivery = netProfit + deliveryFeesCollected - deliveryFeesPaid;
+    const profitAfterDelivery = netProfit - deliveryExpensesDeclared;
     const grossMarginPct = revenue > 0 ? (netProfit / revenue) * 100 : 0;
     const averageItemsPerOrder = totalOrders > 0 ? totalItemsSold / totalOrders : 0;
     const averageOrderValue = totalOrders > 0 ? revenue / totalOrders : 0;
@@ -1499,7 +1532,7 @@ export async function registerRoutes(
       profitAfterDelivery,
       discountsGiven,
       deliveryFeesCollected,
-      deliveryFeesPaid,
+      deliveryExpensesDeclared,
       totalOrders,
       averageItemsPerOrder,
       averageOrderValue,

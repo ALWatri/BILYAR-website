@@ -79,8 +79,7 @@ export default function Customers() {
 
   const deleteCustomerMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch("/api/customers", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }), credentials: "include" });
-      if (!res.ok) throw new Error(await res.text().catch(() => "Failed"));
+      const res = await apiRequest("DELETE", "/api/customers", { id });
       return res.json();
     },
     onSuccess: () => {
